@@ -1,0 +1,2 @@
+source /home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/gdbinit/symbols
+source /home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/gdbinit/connect

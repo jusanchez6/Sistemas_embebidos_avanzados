@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/CMakeFiles/bootloader
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/CMakeFiles/bootloader.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/CMakeFiles/bootloader-complete.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/home/julian-sanchez/Universidad/Sistemas_embebidos_avanzados/gpio_example/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
