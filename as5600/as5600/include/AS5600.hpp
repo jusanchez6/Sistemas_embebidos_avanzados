@@ -16,8 +16,8 @@
  * 
  * 
  */
-#ifndef AS5600_DRIVER_HPP
-#define AS5600_DRIVER_HPP
+#ifndef AS5600_HPP
+#define AS5600_HPP
 
 #include <stdint.h>
 #include "driver/i2c.h"
@@ -66,4 +66,4 @@ enum AS5600Registers {
  * @}
  */
 
-#endif  // AS5600_DRIVER_H
+#endif  // AS5600_HPP

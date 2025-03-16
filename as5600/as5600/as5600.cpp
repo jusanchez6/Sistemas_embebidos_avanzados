@@ -19,7 +19,7 @@
 
 #include <cstdint>
 #include "esp_log.h"
-#include "as5600_driver.hpp"
+#include "AS5600.hpp"
 
 #define TAG "AS5600"
 #define I2C_FREQ_HZ 400000      // 400kHz
