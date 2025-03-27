@@ -17,7 +17,7 @@
 
 #define UART_NUM UART_NUM_1 // Puedes usar UART0, UART1, UART2 según tu necesidad
 #define TX_PIN 17           // Define los pines según tu hardware
-#define RX_PIN 16
+#define RX_PIN 18
 #define BUF_SIZE 1024 // Tamaño del buffer de recepción
 
 void uart_init()
@@ -30,9 +30,12 @@ void uart_init()
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
 
     // Configurar el UART con los parámetros especificados
-    uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config(UART_NUM, &uart_config);
+    uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
+    
     uart_set_pin(UART_NUM, TX_PIN, RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+
+
 }
 
 void SerialPort_SendData(const char *data, int size)
@@ -64,6 +67,7 @@ EasyProfile eP(&eOD);
 
 void app_main(void)
 {
+    uart_init(); // Inicializa el UART
 
     while (1)
     {
@@ -83,7 +87,7 @@ void app_main(void)
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100)); // Please avoid sending requests too often. Delay for 1000 ms (1 second).
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Please avoid sending requests too often. Delay for 1000 ms (1 second).
     }
 }
 
@@ -249,3 +253,4 @@ void OnSerialRX(void)
         }
     }
 }
+
