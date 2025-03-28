@@ -46,34 +46,6 @@ void APDS9960_init(APDS9960_t *apds9960, i2c_port_t i2c_num, uint8_t sda, uint8_
  */
 void APDS9960_set_mode(APDS9960_t *apds9960, apds9960_mode_t mode);
 
-/**
- * @brief Set the interrupt thresholds for the ambient light sensor
- * 
- * @param apds9960 Pointer to the APDS9960 object
- * @param high High threshold
- * @param pers Persistence value
- */
-void APDS9960_set_ambient_light_interrupt_threshold(APDS9960_t *apds9960, uint16_t low, apds9960_pers_t pers);
-
-/**
- * @brief Set the interrupt thresholds for the proximity sensor
- * 
- * @param apds9960 Pointer to the APDS9960 object
- * @param low Low threshold
- * @param high High threshold
- */
-void APDS9960_config_proximity(APDS9960_t *apds9960, uint8_t low, uint8_t high);
-
-/**
- * @brief Read the proximity value from the sensor
- * 
- * @param apds9960 Pointer to the APDS9960 object
- * @param proximity Pointer to store the proximity value
- * 
- * @return true if successful, false otherwise
- */
-bool APDS9960_read_proximity(APDS9960_t *apds9960, uint8_t *proximity);
-
 
 /**
  * @brief Get the RGB values from the sensor

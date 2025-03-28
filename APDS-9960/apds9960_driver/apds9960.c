@@ -29,7 +29,7 @@ void APDS9960_init(APDS9960_t *apds9960, i2c_port_t i2c_port, uint8_t sda, uint8
 }
 
 void APDS9960_set_mode(APDS9960_t *apds9960, apds9960_mode_t mode) {
-    apds9960->conf.PON = mode;
+    apds9960->conf.WORD = mode;
     i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_ENABLE, &apds9960->conf.WORD, 1);
 
 }
