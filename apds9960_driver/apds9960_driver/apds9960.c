@@ -34,7 +34,7 @@ void APDS9960_set_mode(APDS9960_t *apds9960, apds9960_mode_t mode) {
 
 }
 
-void APDS9960_get_RGB(APDS9960_t *apds9960, uint16_t *r, uint16_t *g, uint16_t *b) {
+void APDS9960_get_RGB(APDS9960_t *apds9960, uint16_t *r, uint16_t *g, uint16_t *b, bool scale) {
     uint8_t data[6] = {0};
 
     // Leer los 6 bytes desde el registro RDATAL (0x96)
@@ -43,27 +43,26 @@ void APDS9960_get_RGB(APDS9960_t *apds9960, uint16_t *r, uint16_t *g, uint16_t *
     *r = (data[1] << 8) | data[0];  // Rojo
     *g = (data[3] << 8) | data[2];  // Verde
     *b = (data[5] << 8) | data[4];  // Azul
-}
 
-void APDS9960_set_ambient_light_interrupt_threshold(APDS9960_t *apds9960, uint16_t high, apds9960_pers_t pers) {
+
+    if (scale) {
+        // Scale the values to 0-255
+        *r = map_func(*r, 0, 1025, 0, 255);
+        *g = map_func(*g, 0, 1025, 0, 255);
+        *b = map_func(*b, 0, 1025, 0, 255);
+    }
+
+
     
-    uint8_t high_byte = (high >> 8) & 0xFF;
-    uint8_t low_byte = high & 0xFF;
-
-    i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_AILTL, &low_byte, 1);
-    i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_AILTH, &high_byte, 1);
-
-    // Set the persistence
-    uint8_t pers_byte = pers;
-    i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_PERS, &pers_byte, 1);
-
 }
 
+void APDS9960_set_gain(APDS9960_t *apds9960, apds9960_gain_t gain) {
+    
+    uint8_t data = gain;
 
-bool APDS9960_read_proximity(APDS9960_t *apds9960, uint8_t *proximity) {
-    uint8_t data = 0;
-    i2c_read_reg(&apds9960->i2c_handle, APDS9960_REG_PDATA, &data, 1);
+    printf("Setting gain to %d\n", data);
+    
+    // Set the gain register
 
-    *proximity = data;
-    return true;
+    i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_CONTROL, &data, 1);
 }

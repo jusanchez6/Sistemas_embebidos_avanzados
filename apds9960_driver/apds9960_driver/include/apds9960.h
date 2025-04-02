@@ -55,8 +55,15 @@ void APDS9960_set_mode(APDS9960_t *apds9960, apds9960_mode_t mode);
  * @param g Pointer to store the green value
  * @param b Pointer to store the blue value
  */
-void APDS9960_get_RGB(APDS9960_t *apds9960, uint16_t *r, uint16_t *g, uint16_t *b);
+void APDS9960_get_RGB(APDS9960_t *apds9960, uint16_t *r, uint16_t *g, uint16_t *b, bool scale);
 
 
+/**
+ * @brief Set the gain of the sensor
+ * 
+ * @param apds9960 Pointer to the APDS9960 object
+ * @param gain Gain value to set
+ */
+void APDS9960_set_gain(APDS9960_t *apds9960, apds9960_gain_t gain);
 
 #endif // APDS9960_H

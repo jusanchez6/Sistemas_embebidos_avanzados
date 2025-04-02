@@ -68,3 +68,14 @@ void i2c_write(i2c_t *i2c, uint8_t *data, size_t len)
     i2c_master_transmit(i2c->dev_handle, data, len, I2C_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
+
+
+// -------------------------------------------------------------
+// ---------------------- MAP ---------------------------
+// -------------------------------------------------------------
+
+
+uint16_t map_func(long x, long in_min, long in_max, long out_min, long out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+

@@ -104,6 +104,13 @@ typedef enum
 
 } apds9960_pers_t;
 
+typedef enum
+{
+    APDS9960_AGAIN_1X = 0x00,        ///< Gain 1x
+    APDS9960_AGAIN_4X = 0x01,        ///< Gain 4x
+    APDS9960_AGAIN_16X = 0x02,       ///< Gain 16x
+    APDS9960_AGAIN_64X = 0x03        ///< Gain 64x
+} apds9960_gain_t;
 
 
 ///< BITFIELD CONTANT VALUES

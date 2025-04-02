@@ -15,12 +15,13 @@ void app_main(void)
 
     // Set the mode to enable ALS and Proximity detection
     APDS9960_set_mode(&apds9960, APDS9960_AEN_ENABLE);
+    APDS9960_set_gain(&apds9960, APDS9960_AGAIN_64X);
 
 
     uint16_t r, g, b;
 
     while (1) {
-        APDS9960_get_RGB(&apds9960, &r, &g, &b);
+        APDS9960_get_RGB(&apds9960, &r, &g, &b, true);
         printf("R: %d, G: %d, B: %d\n", r, g, b);
 
         vTaskDelay(1000 / portTICK_PERIOD_MS);
