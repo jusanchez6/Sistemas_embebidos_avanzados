@@ -1,3 +1,43 @@
+/**
+ * @file apds9960.h
+ * 
+ * @brief APDS9960 driver header file
+ * 
+ * This file contains the function declarations and data structures for the APDS9960 driver. This driver uses the I2C interface to communicate with the APDS9960 sensor. The driver provides functions to initialize the sensor, set the mode, get RGB values, and set the gain.
+ * 
+ * @authors Julián Sanchez
+ *          Angel Graciano
+ *          Nelson Parra
+ * 
+ * @date 02-04-2025
+ * 
+ * @copyright Copyright (c) RoboCup SISTEMIC 2025 
+ * 
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * 
+ */
+
+
+
 #ifndef APDS9960_H
 #define APDS9960_H
 
@@ -16,7 +56,11 @@
 #define APDS9960_I2C_ADDR 0x39          ///< I2C address of the APDS9960
 #define I2C_MASTER_FREQ_HZ 400000       ///< I2C master clock frequency 
 
-
+/**
+ * @brief APDS9960 driver structure
+ * 
+ * This structure contains the configuration and registers of the APDS9960 sensor. It also contains the I2C handle for communication with the sensor.
+ */
 typedef struct 
 {
     apds9960_config_t conf;         ///< Configuration register union
