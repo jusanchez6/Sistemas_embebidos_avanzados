@@ -1,8 +1,57 @@
+/**
+ * @file apds9960_defs.h
+ * 
+ * @brief APDS9960 definitions and registers
+ * 
+ * This file contains the definitions of values, bitfields and register addresses for the APDS9960 sensor. Part of the
+ * APDS9960 sensor driver.
+ * 
+ * @authors Julian Sanchez
+ *          Angel Graciano
+ *          Nelson Parra
+ * 
+ * @date 02-04-2025
+ * 
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) RoboCup SISTEMIC 2025 
+ * 
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * 
+ */
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
-
+/**
+ * \addtogroup APDS9960 device driver
+ * 
+ * @{
+ * 
+ * \brief APDS9960 definitions and registers
+ * 
+ * This file contains the definitions and register addresses for the APDS9960 sensor.
+ */
 typedef enum 
 {
     APDS9960_REG_ENABLE = 0x80,             ///< Enable register
