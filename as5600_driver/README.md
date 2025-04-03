@@ -1,52 +1,87 @@
-# Sistemas Embebidos Avanzados
+# AS5600 Library Guide
 
-La mejor materia de Ingenieria Electrónica tiene su repositorio. Aquí se encuentra de manera organizada los drivers de los sensores y algunos programas desarrollados a lo largo del curso
+## Overview
+The AS5600 is a 12-bit contactless rotary position sensor that uses magnetic field sensing to determine the angle of a rotating magnet. This library provides an interface for communicating with the AS5600 sensor using I2C and reading angle values either through digital communication or via the ADC output.
 
-## Drivers
-- [x] T-AS5600 Magnetic encoder
+### Features
+- I2C communication support
+- ADC-based angle reading
+- Register access for sensor configuration
+- Functions for setting and retrieving configuration parameters
+- Support for permanent programming (burn mode)
 
-- [ ] VL6180 Laser Range Sensor
+## How to Use
 
-- [ ] TM151 IMU
+### 1. **Include the Library**
+Ensure you include the necessary header files in your project:
 
-- [x] APDS-9960 RGB Sensor
-
-### Estructura de los drivers
-```
-my_project/
-
-├── CMakeLists.txt                # CMake principal del proyecto
-
-├── sdkconfig                     # Configuración generada por `menuconfig`
-
-├── main/
-
-│   ├── CMakeLists.txt            # CMake del proyecto principal
-
-│   ├── main.c                    # Archivo principal de la aplicación
-
-│   └── README.md                 # Documentación del proyecto
-
-└── components/                   # Carpeta de componentes personalizados
-
-    └── sensor_driver/            # Driver del sensor como componente
-    
-        ├── CMakeLists.txt        # CMake del componente del driver
-        
-        ├── sensor_driver.c       # Implementación del driver
-        
-        ├── sensor_driver.h       # Archivo de cabecera del driver
-        
-        └── driver_config.h       # Configuración opcional del driver
-
+```c
+#include "as5600_lib.h"
 ```
 
-### Configuración del main/CMakeLists.txt
+### 2. **Initialize the Sensor**
+Before using the sensor, initialize the I2C communication and ADC pin (if using analog output):
 
-```c 
-idf_component_register(SRCS "main.c"
-                       INCLUDE_DIRS ".")
+```c
+AS5600_t sensor;
+AS5600_Init(&sensor, I2C_NUM_0, GPIO_NUM_21, GPIO_NUM_22, GPIO_NUM_34);
+```
 
-# Incluir el componente del driver
-target_link_libraries(${COMPONENT_LIB} PRIVATE sensor_driver) 
-``` 
+- `I2C_NUM_0`: I2C port number
+- `GPIO_NUM_21`: SCL pin
+- `GPIO_NUM_22`: SDA pin
+- `GPIO_NUM_34`: ADC pin (OUT pin of AS5600)
+
+### 3. **Read the Angle Value**
+You can read the angle from the AS5600 sensor using I2C:
+
+```c
+uint16_t angle;
+AS5600_GetAngle(&sensor, &angle);
+printf("Angle: %d degrees\n", angle);
+```
+
+Or if using the ADC output:
+
+```c
+float angle_adc = AS5600_ADC_GetAngle(&sensor);
+printf("Angle from ADC: %.2f degrees\n", angle_adc);
+```
+
+### 4. **Configure Sensor Settings**
+Set a custom start position:
+
+```c
+AS5600_SetStartPosition(&sensor, 1024);
+```
+
+Read the start position:
+
+```c
+uint16_t start_position;
+AS5600_GetStartPosition(&sensor, &start_position);
+printf("Start Position: %d\n", start_position);
+```
+
+### 5. **Burn Configuration (Permanent Programming)**
+If you need to permanently store the zero and max positions:
+
+```c
+AS5600_BurnAngleCommand(&sensor);
+```
+
+### 6. **Deinitialize the Sensor**
+Before shutting down or resetting, release the I2C and ADC resources:
+
+```c
+AS5600_Deinit(&sensor);
+```
+
+## Notes
+- The sensor requires a stable power supply (3.3V) to ensure accurate readings.
+- The ADC output range is limited to 10%-90% of VCC, so consider calibration if using the ADC method.
+- Burn commands (`BurnAngleCommand` and `BurnSettingCommand`) are **irreversible** and should be used with caution.
+
+---
+This guide provides a basic overview of how to use the AS5600 library. For advanced configurations, refer to the AS5600 datasheet and source code documentation.
+
