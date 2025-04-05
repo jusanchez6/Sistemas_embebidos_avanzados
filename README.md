@@ -21,7 +21,7 @@ my_project/
 
 ├── main/
 
-│   ├── CMakeLists.txt                  # CMake del proyecto principal
+│   ├── CMakeLists.txt                  # CMake del archivo principal.
 
 │   ├── main.c                          # Archivo principal de la aplicación
 
