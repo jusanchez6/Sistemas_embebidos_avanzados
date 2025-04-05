@@ -26,6 +26,7 @@ my_project/
 │   ├── main.c                          # Archivo principal de la aplicación
 
 └── sensor_driver/                      # Carpeta de componentes personalizados
+
     ├── sensor_driver.c                 # Implementación del driver
 
     └── include/                        # Carpeta de archivos de cabecera
