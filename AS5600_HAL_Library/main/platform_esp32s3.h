@@ -50,50 +50,54 @@ typedef struct
 /**
  * @brief Initialize the I2C master driver
  * 
- * @param i2c 
- * @param i2c_num 
- * @param gpio_scl 
- * @param gpio_sda 
- * @param clk_speed_hz 
- * @param addr 
+ * @param i2c Pointer to the I2C driver structure
+ * @param i2c_num I2C port number (e.g., I2C_NUM_0, I2C_NUM_1)
+ * @param gpio_scl GPIO number for the I2C clock line (SCL)
+ * @param gpio_sda GPIO number for the I2C data line (SDA)
+ * @param clk_speed_hz Clock speed for I2C communication in Hertz
+ * @param addr 7-bit I2C address of the target slave device
  * @return true if the I2C is initialized correctly
  * @return false if the I2C initialization failed
  */
+
 bool i2c_init(i2c_t *i2c, i2c_port_t i2c_num, uint8_t gpio_scl, uint8_t gpio_sda, uint32_t clk_speed_hz, uint16_t addr);
 
 /**
- * @brief Deinitialize the I2C master driver
+ * @brief Deinitialize the I2C master driver and release resources
  * 
- * @param i2c 
+ * @param i2c Pointer to the I2C driver structure to be deinitialized
  */
+
 void i2c_deinit(i2c_t *i2c);
 
 /**
- * @brief Given a register address, read the data from the register.
+ * @brief Given a register address, read data from the I2C slave device.
  * 
- * @param i2c 
- * @param reg 
- * @param data 
- * @param len 
+ * @param i2c Pointer to the initialized I2C driver structure
+ * @param reg Register address to read from
+ * @param data Pointer to the buffer where the read data will be stored
+ * @param len Number of bytes to read from the register
  */
+
 void i2c_read_reg(i2c_t *i2c, uint8_t reg, uint8_t *data, size_t len);
 
 /**
- * @brief Given a register address, write the data to the register.
+ * @brief Given a register address, read data from the I2C slave device.
  * 
- * @param i2c 
- * @param reg 
- * @param data 
- * @param len 
+ * @param i2c Pointer to the initialized I2C driver structure
+ * @param reg Register address to read from
+ * @param data Pointer to the buffer where the read data will be stored
+ * @param len Number of bytes to read from the register
  */
+
 void i2c_write_reg(i2c_t *i2c, uint8_t reg, uint8_t *data, size_t len);
 
 /**
- * @brief Write data to the I2C bus
+ * @brief Write data to the I2C slave device.
  * 
- * @param i2c 
- * @param data 
- * @param len 
+ * @param i2c Pointer to the initialized I2C driver structure
+ * @param data Pointer to the data buffer to be written
+ * @param len Number of bytes to write to the I2C bus
  */
 void i2c_write(i2c_t *i2c, uint8_t *data, size_t len);
 
@@ -158,18 +162,19 @@ bool adc_deinit(adc_t *adc);
 /**
  * @brief Read the raw ADC value. Range: 0 - 4095
  * 
- * @param adc 
- * @param raw 
+ * @param adc Pointer to the ADC driver structure
+ * @param raw Pointer to an integer where the raw ADC value will be stored
  */
+
 void adc_read_raw(adc_t *adc, int *raw);
 
 /**
  * @brief Read the ADC value and convert it to millivolts
  * 
- * @param adc 
- * @param raw 
- * @param angle 
+ * @param adc Pointer to the ADC driver structure
+ * @param mvolt Pointer to a variable where the converted millivolt value will be stored
  */
+
 void adc_read_mvolt(adc_t *adc, uint16_t *mvolt);
 
 
