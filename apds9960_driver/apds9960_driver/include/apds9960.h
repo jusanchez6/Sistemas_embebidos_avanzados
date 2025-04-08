@@ -55,7 +55,11 @@
 #define APDS9960_I2C_ADDR 0x39          ///< I2C address of the APDS9960
 #define I2C_MASTER_FREQ_HZ 400000       ///< I2C master clock frequency 
 
-
+/**
+ * @brief APDS9960 driver structure
+ * 
+ * This structure contains the configuration and registers of the APDS9960 sensor. It also contains the I2C handle for communication with the sensor.
+ */
 typedef struct 
 {
     apds9960_config_t conf;         ///< Configuration register union
