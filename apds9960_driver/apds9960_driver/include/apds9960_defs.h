@@ -52,6 +52,12 @@
  * 
  * This file contains the definitions and register addresses for the APDS9960 sensor.
  */
+
+/**
+ * \brief APDS9960 register addresses
+ * 
+ * This enum contains the register addresses for the APDS9960 sensor. Each register is used to configure and read data from the sensor.
+ */
 typedef enum 
 {
     APDS9960_REG_ENABLE = 0x80,             ///< Enable register
@@ -107,7 +113,11 @@ typedef enum
 } apds9960_regs_t;
 
 
-
+/**
+ * \brief APDS9960 configuration register
+ * 
+ * This union contains the configuration register for the APDS9960 sensor. Each bit in the register is used to enable or disable different features of the sensor.
+ */
 typedef union
 {
     uint8_t WORD;
@@ -124,7 +134,11 @@ typedef union
     
 } apds9960_config_t;
 
-
+/**
+ * \brief APDS9960 mode register
+ * 
+ * This enum contains the mode register for the APDS9960 sensor. Each bit in the register is used to enable or disable different features of the sensor.
+ */
 typedef enum
 {
     APDS9960_MODE_OFF = 0x00,       ///< Power off
@@ -138,7 +152,12 @@ typedef enum
 
 } apds9960_mode_t;
 
-
+/**
+ * \brief APDS9960 persistence register
+ * 
+ * This enum contains the persistence register for the APDS9960 sensor. Each bit in the register is used to configure the persistence of the sensor.
+ * 
+ */
 typedef enum
 {
     APDS9960_PERS_0 = 0x00,         ///< Every ALS cycle generates an interrupt
@@ -153,6 +172,12 @@ typedef enum
 
 } apds9960_pers_t;
 
+/**
+ * \brief APDS9960 gain register
+ * 
+ * This enum contains the gain register for the APDS9960 sensor. Each bit in the register is used to configure the gain of the sensor.
+ * 
+ */
 typedef enum
 {
     APDS9960_AGAIN_1X = 0x00,        ///< Gain 1x
@@ -161,6 +186,19 @@ typedef enum
     APDS9960_AGAIN_64X = 0x03        ///< Gain 64x
 } apds9960_gain_t;
 
+/** * @}*/
 
-///< BITFIELD CONTANT VALUES
+/**
+ * \addtogroup APDS9960 constants
+ * 
+ * @{
+ * 
+ * \brief APDS9960 constants
+ * 
+ * This file contains the definitions of values, bitfields and register addresses for the APDS9960 sensor.
+ */
+///< @brief APDS9960 ID     
 #define APDS9960_ID 0xA8
+
+/** * @} */
+

@@ -1,3 +1,42 @@
+/**
+ * @file apds9960.h
+ * 
+ * @brief APDS9960 driver header file
+ * 
+ * This file contains the definitions and function prototypes for the APDS9960 driver. The driver is used to interface with the APDS9960 sensor, which is a digital RGB color sensor with proximity detection capabilities.
+ * 
+ * @authors Julian Sanchez
+ *          Angel Graciano
+ *          Nelson Parra
+ * 
+ * 
+ * @date 08-04-2025
+ * 
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) RoboCup SISTEMIC 2025 
+ * 
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+*/
+
 #ifndef APDS9960_H
 #define APDS9960_H
 
@@ -65,5 +104,15 @@ void APDS9960_get_RGB(APDS9960_t *apds9960, uint16_t *r, uint16_t *g, uint16_t *
  * @param gain Gain value to set
  */
 void APDS9960_set_gain(APDS9960_t *apds9960, apds9960_gain_t gain);
+
+
+/**
+ * @brief disable the sensor
+ * 
+ * @param apds9960 Pointer to the APDS9960 object
+ */
+void APDS9960_disable(APDS9960_t *apds9960);
+
+
 
 #endif // APDS9960_H
