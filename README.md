@@ -15,38 +15,37 @@ La mejor materia de Ingenieria Electrónica tiene su repositorio. Aquí se encue
 ```
 my_project/
 
-├── CMakeLists.txt                # CMake principal del proyecto
+├── CMakeLists.txt                      # CMake principal del proyecto
 
-├── sdkconfig                     # Configuración generada por `menuconfig`
+├── sdkconfig                           # Configuración generada por `menuconfig`
 
 ├── main/
 
-│   ├── CMakeLists.txt            # CMake del proyecto principal
+│   ├── CMakeLists.txt                  # CMake del archivo principal.
 
-│   ├── main.c                    # Archivo principal de la aplicación
+│   ├── main.c                          # Archivo principal de la aplicación
 
-│   └── README.md                 # Documentación del proyecto
+└── sensor_driver/                      # Carpeta de componentes personalizados
 
-└── components/                   # Carpeta de componentes personalizados
+    ├── sensor_driver.c                 # Implementación del driver
 
-    └── sensor_driver/            # Driver del sensor como componente
+    └── include/                        # Carpeta de archivos de cabecera
+        
+        ├── sensor_driver.h             # Archivo de cabecera del driver
+        
+        └── driver_config.h             # Configuración opcional del driver
     
-        ├── CMakeLists.txt        # CMake del componente del driver
-        
-        ├── sensor_driver.c       # Implementación del driver
-        
-        ├── sensor_driver.h       # Archivo de cabecera del driver
-        
-        └── driver_config.h       # Configuración opcional del driver
 
 ```
 
 ### Configuración del main/CMakeLists.txt
 
-```c 
-idf_component_register(SRCS "main.c"
-                       INCLUDE_DIRS ".")
+```c
+file (GLOB SRC_FILES "../sensor_driver/*.c")
 
-# Incluir el componente del driver
-target_link_libraries(${COMPONENT_LIB} PRIVATE sensor_driver) 
+idf_component_register(
+        SRCS "main.c" ${SRC_FILES}
+        INCLUDE_DIRS "." "../sensor_driver/include"
+)
+
 ``` 
