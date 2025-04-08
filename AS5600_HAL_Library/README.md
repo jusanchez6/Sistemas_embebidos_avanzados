@@ -1,3 +1,26 @@
+# AS5600 ESP32-S3 HAL Library
+
+This library is designed to work with the AS5600 magnetic position sensor using an ESP32-S3. It includes features for initialization, configuration, angle reading, and an automated calibration process.
+
+## 📦 Features
+
+- I2C communication with the AS5600 sensor
+- Support for angle reading via ADC
+- Full configuration of the CONF register
+- Automatic calibration using a timer
+
+## 🚀 Quick Start
+
+1. Connect the AS5600 sensor to the ESP32-S3:
+   - SDA -> GPIO5
+   - SCL -> GPIO4
+   - OUT -> GPIO6 (optional, for analog output)
+
+2. Clone this repository and copy the `AS5600_HAL_Library` folder into your project.
+
+3. Include the library in your main file:
+
+```c
 # AS5600 Library Guide
 
 ## Overview
@@ -39,6 +62,14 @@ You can read the angle from the AS5600 sensor using I2C:
 uint16_t angle;
 AS5600_GetAngle(&sensor, &angle);
 printf("Angle: %d degrees\n", angle);
+
+The value can also be obtained by adc.
+
+```c
+float angle = AS5600_ADC_GetAngle(&sensor);
+printf("Analog Angle (ADC): %.2f degrees\n", angle);
+```
+
 # AS5600 ESP32-S3 HAL Library
 
 This library is designed to work with the AS5600 magnetic position sensor using an ESP32-S3. It includes features for initialization, configuration, angle reading, and an automated calibration process.
