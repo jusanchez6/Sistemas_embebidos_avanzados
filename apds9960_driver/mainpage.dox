@@ -1,0 +1,62 @@
+/**
+ * @mainpage APDS9960 DRIVER Documentation
+ * 
+ * @section intro_sec Introduction
+ * 
+ * This project provides a robust driver for the APDS-9960 sensor, tailored for the ESP32-S3 platform. 
+ * It enables seamless integration and control of the sensor's features, including gesture detection, 
+ * proximity sensing, ambient light sensing, and RGB color detection. The driver is written in C and 
+ * includes detailed API documentation, initialization routines, configuration options, and examples 
+ * for utilizing the sensor's capabilities in embedded applications.
+ * 
+ * @section driver_structure_sec Driver Structure
+ * 
+ * The driver is organized into the following components:
+ * 
+ * - **Initialization**: Functions to initialize the APDS-9960 sensor and configure its settings.
+ * - **Configuration**: APIs to set up the sensor's operational modes.
+ * - **Data Acquisition**: Functions to read data from the sensor: ambient light, and RGB color values.
+ * - **Utilities**: Helper functions for data conversion, scaling, and debugging.
+ * 
+ * Below is a high-level overview of the main functions provided by the driver:
+ * 
+ * - `apds9960_init()`: Initializes the sensor and verifies communication.
+ * - `apds9960_set_mode(mode, enable)`: Configures the sensor's operational mode.
+ * - `apds9960_read_rgb()`: Reads RGB color data.
+ * - `apds9960_disable()`: Disable the RGB sensor.  
+ * These functions are designed to provide a simple and intuitive interface for integrating the APDS-9960 sensor into embedded applications.
+
+ * 
+ * @section license_sec License
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * 
+ * 
+ * @section author_sec Author
+ * 
+ * 
+ * Developed by Julian Sanchez
+                Nelson Parra
+                Angel Graciano
+ * 
+ * @version 1.0
+ * @date April 08, 2025
+ */

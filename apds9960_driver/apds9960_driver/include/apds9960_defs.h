@@ -1,8 +1,63 @@
+/**
+ * @file apds9960_defs.h
+ * 
+ * @brief APDS9960 definitions and registers
+ * 
+ * This file contains the definitions of values, bitfields and register addresses for the APDS9960 sensor. Part of the
+ * APDS9960 sensor driver.
+ * 
+ * @authors Julian Sanchez
+ *          Angel Graciano
+ *          Nelson Parra
+ * 
+ * @date 02-04-2025
+ * 
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) RoboCup SISTEMIC 2025 
+ * 
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * 
+ */
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
+/**
+ * \addtogroup APDS9960 device driver
+ * 
+ * @{
+ * 
+ * \brief APDS9960 definitions and registers
+ * 
+ * This file contains the definitions and register addresses for the APDS9960 sensor.
+ */
 
+/**
+ * \brief APDS9960 register addresses
+ * 
+ * This enum contains the register addresses for the APDS9960 sensor. Each register is used to configure and read data from the sensor.
+ */
 typedef enum 
 {
     APDS9960_REG_ENABLE = 0x80,             ///< Enable register
@@ -58,7 +113,11 @@ typedef enum
 } apds9960_regs_t;
 
 
-
+/**
+ * \brief APDS9960 configuration register
+ * 
+ * This union contains the configuration register for the APDS9960 sensor. Each bit in the register is used to enable or disable different features of the sensor.
+ */
 typedef union
 {
     uint8_t WORD;
@@ -75,7 +134,11 @@ typedef union
     
 } apds9960_config_t;
 
-
+/**
+ * \brief APDS9960 mode register
+ * 
+ * This enum contains the mode register for the APDS9960 sensor. Each bit in the register is used to enable or disable different features of the sensor.
+ */
 typedef enum
 {
     APDS9960_MODE_OFF = 0x00,       ///< Power off
@@ -89,7 +152,12 @@ typedef enum
 
 } apds9960_mode_t;
 
-
+/**
+ * \brief APDS9960 persistence register
+ * 
+ * This enum contains the persistence register for the APDS9960 sensor. Each bit in the register is used to configure the persistence of the sensor.
+ * 
+ */
 typedef enum
 {
     APDS9960_PERS_0 = 0x00,         ///< Every ALS cycle generates an interrupt
@@ -104,7 +172,33 @@ typedef enum
 
 } apds9960_pers_t;
 
+/**
+ * \brief APDS9960 gain register
+ * 
+ * This enum contains the gain register for the APDS9960 sensor. Each bit in the register is used to configure the gain of the sensor.
+ * 
+ */
+typedef enum
+{
+    APDS9960_AGAIN_1X = 0x00,        ///< Gain 1x
+    APDS9960_AGAIN_4X = 0x01,        ///< Gain 4x
+    APDS9960_AGAIN_16X = 0x02,       ///< Gain 16x
+    APDS9960_AGAIN_64X = 0x03        ///< Gain 64x
+} apds9960_gain_t;
 
+/** * @}*/
 
-///< BITFIELD CONTANT VALUES
+/**
+ * \addtogroup APDS9960 constants
+ * 
+ * @{
+ * 
+ * \brief APDS9960 constants
+ * 
+ * This file contains the definitions of values, bitfields and register addresses for the APDS9960 sensor.
+ */
+///< @brief APDS9960 ID     
 #define APDS9960_ID 0xA8
+
+/** * @} */
+

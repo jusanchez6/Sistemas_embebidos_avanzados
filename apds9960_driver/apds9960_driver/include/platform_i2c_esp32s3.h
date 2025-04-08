@@ -35,6 +35,7 @@
  /**
   * @brief I2C master driver structure
   * 
+  * 
   */
  typedef struct 
  {
@@ -102,5 +103,23 @@
  void i2c_write(i2c_t *i2c, uint8_t *data, size_t len);
  
  
+ // -------------------------------------------------------------
+// ---------------------- MAP ---------------------------
+// -------------------------------------------------------------
+
+
+    /**
+    * @brief Map a value from one range to another
+    * 
+    * @param x        Value to map
+    * @param in_min   Minimum value of the input range
+    * @param in_max   Maximum value of the input range
+    * @param out_min  Minimum value of the output range
+    * @param out_max  Maximum value of the output range
+    * 
+    * @return Mapped value
+    */
+ uint16_t map_func(long x, long in_min, long in_max, long out_min, long out_max);
+
  
  #endif // __HAL_ESP32__
