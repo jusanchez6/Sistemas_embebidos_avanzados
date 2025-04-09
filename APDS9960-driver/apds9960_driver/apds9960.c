@@ -107,6 +107,15 @@ void APDS9960_set_gain(APDS9960_t *apds9960, apds9960_gain_t gain) {
     i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_CONTROL, &data, 1);
 }
 
+void APDS9960_set_ATime(APDS9960_t *apds9960, uint8_t atime) {
+    uint8_t data = atime;
+
+    // Set the integration time register
+    i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_ATIME, &data, 1);
+    ESP_LOGI("APDS9960", "Integration time set to %d", atime);
+}
+
+
 void APDS9960_disable(APDS9960_t *apds9960) {
     apds9960->conf.WORD = APDS9960_MODE_OFF;
     i2c_write_reg(&apds9960->i2c_handle, APDS9960_REG_ENABLE, &apds9960->conf.WORD, 1);
