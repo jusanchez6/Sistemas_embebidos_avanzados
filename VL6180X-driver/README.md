@@ -71,3 +71,12 @@ When firmware mounted, it is going to require to put an object in a specified ra
 
 #### Troubleshoot
 If for any reason the program reboots, you do the same: *Wait until the console starts to show **VL6180x: No target detect.**, and then you put your object at the asked distance*.
+
+
+### Documentation
+here it includes too the documentation with doxygen.Run the following command for futher information
+
+```bash
+doxygen Doxyfile
+```
+

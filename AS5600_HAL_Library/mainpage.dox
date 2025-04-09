@@ -1,0 +1,134 @@
+/*!
+ * @mainpage AS5600 ESP32-S3 Driver
+ *
+ * @section supported_targets Supported Targets
+ * | Supported Targets | ESP32-S3 |
+ *
+ * @section intro_sec Introduction
+ *
+ * This library is designed to work with the AS5600 magnetic position sensor using an ESP32-S3. 
+ * It includes features for initialization, configuration, angle reading, and an automated calibration process.
+ *
+ * @section features_sec Features
+ * - I2C communication with the AS5600 sensor
+ * - Support for angle reading via ADC
+ * - Full configuration of the CONF register
+ * - Automatic calibration using a timer
+ *
+ * @section overview_sec Overview
+ * The AS5600 is a 12-bit contactless rotary position sensor that uses magnetic field sensing 
+ * to determine the angle of a rotating magnet. This library provides an interface for communicating 
+ * with the AS5600 sensor using I2C and reading angle values either through digital communication or via the ADC output.
+ *
+ * @subsection features_subsec Features
+ * - I2C communication support
+ * - ADC-based angle reading
+ * - Register access for sensor configuration
+ * - Functions for setting and retrieving configuration parameters
+ * - Support for permanent programming (burn mode)
+ *
+ * @section usage_sec How to Use
+ *
+ * @subsection include_subsec 1. Include the Library
+ * Ensure you include the necessary header files in your project:
+ * @code
+ * #include "as5600_lib.h"
+ * @endcode
+ *
+ * @subsection init_subsec 2. Initialize the Sensor
+ * Initialize the I2C communication and ADC pin (if using analog output):
+ * @code
+ * AS5600_t sensor;
+ * AS5600_Init(&sensor, I2C_NUM_0, GPIO_NUM_21, GPIO_NUM_22, GPIO_NUM_34);
+ * @endcode
+ * - I2C_NUM_0: I2C port number
+ * - GPIO_NUM_21: SCL pin
+ * - GPIO_NUM_22: SDA pin
+ * - GPIO_NUM_34: ADC pin (OUT pin of AS5600)
+ *
+ * @subsection read_angle_subsec 3. Read the Angle Value
+ * You can read the angle from the AS5600 sensor using I2C:
+ * @code
+ * uint16_t angle;
+ * AS5600_GetAngle(&sensor, &angle);
+ * printf("Angle: %d degrees\n", angle);
+ * @endcode
+ *
+ * You can also use the ADC to get the angle:
+ * @code
+ * float angle = AS5600_ADC_GetAngle(&sensor);
+ * printf("Analog Angle (ADC): %.2f degrees\n", angle);
+ * @endcode
+ *
+ * @section calibration_sec 4. AS5600 Sensor Calibration
+ *
+ * This code includes a basic calibration routine for the AS5600 sensor using the ESP32-S3. 
+ * The calibration runs automatically at program startup. Here's the step-by-step process:
+ *
+ * 1. **Program start**  
+ *    - When the ESP32-S3 powers on, the sensor is configured and a timer starts the calibration process.
+ *
+ * 2. **Position the magnet at the maximum angle**  
+ *    - Move the magnet (or rotating shaft) to its **maximum** rotation position.  
+ *    Console output:
+ *    @code
+ *    AS5600 calibration step 1. As step 4 in page 23 of the datasheet, 
+ *    move the magnet (or wheel) to the MAX position.
+ *    @endcode
+ *
+ * 3. **Set OUT signal to ground (GND)**  
+ *    - The sensor's OUT pin is set to LOW to mark this position.
+ *
+ * 4. **Angle reading**  
+ *    - ADC angle reading is enabled.  
+ *    - ESP32 prints the angle once per second for 100 cycles.
+ *    @code
+ *    angle-> 265.32
+ *    angle-> 265.37
+ *    ...
+ *    @endcode
+ *
+ * 5. **Calibration complete**  
+ *    - The timer stops and the sensor is ready for use.
+ *
+ * @section doc_sec Documentation
+ *
+ * This library includes full documentation compatible with Doxygen.  
+ * To generate the documentation, run:
+ * @code{.sh}
+ * doxygen Doxyfile
+ * @endcode
+ *
+ * @section license_sec License
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * 
+ * 
+ * @section author_sec Author
+ * 
+ * 
+ * Developed by Julian Sanchez
+                Nelson Parra
+                Angel Graciano
+ * 
+ * @version 1.0
+ * @date April 08, 2025
+ */

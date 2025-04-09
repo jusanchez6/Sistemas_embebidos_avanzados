@@ -1,27 +1,16 @@
-# AS5600 ESP32-S3 HAL Library
+| Supported Targets | ESP32-S3 |
+
+# AS5600 ESP32-S3 driver
 
 This library is designed to work with the AS5600 magnetic position sensor using an ESP32-S3. It includes features for initialization, configuration, angle reading, and an automated calibration process.
 
-## 📦 Features
+## Features
 
 - I2C communication with the AS5600 sensor
 - Support for angle reading via ADC
 - Full configuration of the CONF register
 - Automatic calibration using a timer
 
-## 🚀 Quick Start
-
-1. Connect the AS5600 sensor to the ESP32-S3:
-   - SDA -> GPIO5
-   - SCL -> GPIO4
-   - OUT -> GPIO6 (optional, for analog output)
-
-2. Clone this repository and copy the `AS5600_HAL_Library` folder into your project.
-
-3. Include the library in your main file:
-
-```c
-# AS5600 Library Guide
 
 ## Overview
 The AS5600 is a 12-bit contactless rotary position sensor that uses magnetic field sensing to determine the angle of a rotating magnet. This library provides an interface for communicating with the AS5600 sensor using I2C and reading angle values either through digital communication or via the ADC output.
@@ -62,6 +51,7 @@ You can read the angle from the AS5600 sensor using I2C:
 uint16_t angle;
 AS5600_GetAngle(&sensor, &angle);
 printf("Angle: %d degrees\n", angle);
+```
 
 The value can also be obtained by adc.
 
@@ -70,41 +60,8 @@ float angle = AS5600_ADC_GetAngle(&sensor);
 printf("Analog Angle (ADC): %.2f degrees\n", angle);
 ```
 
-# AS5600 ESP32-S3 HAL Library
 
-This library is designed to work with the AS5600 magnetic position sensor using an ESP32-S3. It includes features for initialization, configuration, angle reading, and an automated calibration process.
-
-## 📦 Features
-
-- I2C communication with the AS5600 sensor
-- Support for angle reading via ADC
-- Full configuration of the CONF register
-- Automatic calibration using a timer
-
-## 🚀 Quick Start
-
-1. Connect the AS5600 sensor to the ESP32-S3:
-   - SDA -> GPIO5
-   - SCL -> GPIO4
-   - OUT -> GPIO6 (optional, for analog output)
-
-2. Clone this repository and copy the `AS5600_HAL_Library` folder into your project.
-
-3. Include the library in your main file:
-
-```c
-#include "as5600_lib.h"
-```
-
-4. Initialize and configure the sensor in `app_main()`:
-
-```c
-AS5600_Init(&gAs5600, I2C_MASTER_NUM, I2C_MASTER_SCL_GPIO, I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
-AS5600_config_t conf = {...};
-AS5600_SetConf(&gAs5600, conf);
-```
-
-## 📐 AS5600 Sensor Calibration
+## 4. AS5600 Sensor Calibration
 
 This code includes a basic calibration routine for the AS5600 sensor using the ESP32-S3. The calibration runs automatically at program startup. Here's the step-by-step process:
 
@@ -134,4 +91,11 @@ This code includes a basic calibration routine for the AS5600 sensor using the E
 5. **Calibration complete**  
    The timer stops and the calibration routine finishes.  
    The sensor is now ready to operate with the calibrated range.
+
+## Documentation
+here it includes too the documentation with doxygen.Run the following command for futher information
+
+```bash
+doxygen Doxyfile
+```
 
