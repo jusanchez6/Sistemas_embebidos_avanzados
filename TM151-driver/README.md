@@ -14,3 +14,11 @@ The company provides an assistant software where you can configure your device. 
 
 ### Calibration
 Calibration is one of the aspects done there. Usually, the IMU calibrates by itself at boot. But, depending on the boot mode, calibration is done different, and precision and quality of service vary.
+
+### Documentation
+here it includes too the documentation with doxygen.Run the following command for futher information
+
+```bash
+doxygen Doxyfile
+```
+

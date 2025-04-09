@@ -1,7 +1,6 @@
 /**
  * @file sensorRGB.c
  * 
-<<<<<<< HEAD
  * @brief Sensor RGB simple usage example
  * 
  * This file contains a simple example of how to use the APDS9960 sensor to read RGB values.
@@ -14,17 +13,6 @@
  * @date 08-04-2025
  * 
  * @version 1.0
-=======
- * @brief Example code for using the APDS9960 sensor to read RGB values
- * 
- * This code initializes the APDS9960 sensor and reads the RGB values in a loop, printing them to the console.
- * 
- * @authors Julián Sánchez 
- *          Angel Graciano
- *          Nelson Parra 
- * 
- * @date 02-04-2025
->>>>>>> a10bbf27acca12e305296f95830abd44b5a0cd20
  * 
  * @copyright Copyright (c) RoboCup SISTEMIC 2025 
  * 
@@ -71,9 +59,10 @@ void app_main(void)
     APDS9960_set_gain(&apds9960, APDS9960_AGAIN_64X);
 
 
-    uint16_t r, g, b;
+    
 
     while (1) {
+        uint16_t r, g, b;
         APDS9960_get_RGB(&apds9960, &r, &g, &b, true);
         printf("R: %d, G: %d, B: %d\n", r, g, b);
 
