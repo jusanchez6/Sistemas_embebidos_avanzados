@@ -111,6 +111,19 @@ void APDS9960_set_gain(APDS9960_t *apds9960, apds9960_gain_t gain);
 
 
 /**
+ * @brief Set the integration time of the sensor
+ * 
+ * The integration time is the time the sensor spends integrating light before taking a measurement. A longer integration time will result in a higher sensitivity to light, but will also increase the time it takes to take a measurement.
+ * 
+ * @param apds9960 Pointer to the APDS9960 object
+ * @param atime Integration time value to set
+ * 
+ * @note default value is 0xFF (2.78ms)
+ */
+void APDS9960_set_ATime(APDS9960_t *apds9960, uint8_t atime);
+
+
+/**
  * @brief disable the sensor
  * 
  * @param apds9960 Pointer to the APDS9960 object
