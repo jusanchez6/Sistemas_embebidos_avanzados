@@ -1,8 +1,8 @@
 /**
  * @file main.c
- * @author 
- * @brief 
- * @details 
+ * @author Striker 1
+ * @brief Main file for obtaining the angle from the AS5600 sensor
+ * @details For wheel modeling purposes, this code is used to obtain the angle from the AS5600 sensor. The angle is obtained through the ADC and the GPIO pin.
  * @version 0.1
  * @date 23/04/2025
  * 
@@ -20,13 +20,10 @@
 #define I2C_MASTER_SDA_GPIO 5       /*!< gpio number for I2C master data  */
 #define AS5600_OUT_GPIO 6           /*!< gpio number for OUT signal */
 #define I2C_MASTER_NUM 1            /*!< I2C port number for master dev */
+#define AS5600_MODE 1         /*!< Calibration = 0, Angle through ADC = 1 */
 
 AS5600_t gAs5600;
 
-///< ------------- For calibration process. -------------
-///< Calibration process is made for esp32s3 only. The AS5600 sensor has a range of 10%-90% of VCC.
-#include "esp_timer.h"
-esp_timer_handle_t gOneshotTimer;
 float angle; ///< Raw angle readed from the AS5600 sensor
 
 void app_main(void)
@@ -53,13 +50,12 @@ void app_main(void)
     printf("Configuration register readed: 0x%04X\n", conf_reg);
     printf("Configuration register written: 0x%04X\n", conf.WORD);
 
-
     ///< ------------- Get angle through ADC -------------
 
     while (1)
     {
-        AS5600_ADC_GetAngle(&gAs5600);
-        vTaskDelay(1000/portTICK_PERIOD_MS);
+        AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
+        vTaskDelay(1000/portTICK_PERIOD_MS); ///< Wait 1 second
     }
     
     
