@@ -12,13 +12,13 @@
 
 #include <stdio.h>
 
-#include "freertos/task.h"
-
 #include "as5600_lib.h"
 
 #include <assert.h>
 #include "esp_partition.h"
 #include "spi_flash_mmap.h"
+
+#include "freertos/task.h"
 
 #define I2C_MASTER_SCL_GPIO 4       /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_GPIO 5       /*!< gpio number for I2C master data  */
