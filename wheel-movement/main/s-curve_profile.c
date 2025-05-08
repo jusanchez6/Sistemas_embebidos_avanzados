@@ -2,7 +2,9 @@
  * @file s-curve_profile.c
  * @author Striker 1
  * @brief S-curve profile generation for motor control
- * @details This file contains the implementation of an S-curve profile generator for motor control applications. The S-curve profile is used to smoothly accelerate and decelerate a motor, reducing mechanical stress and improving performance.
+ * @details This file contains the implementation of an S-curve profile generator for motor control applications.
+ * The S-curve profile is used to smoothly accelerate and decelerate a motor, reducing mechanical stress and
+ * improving performance.
  * @version 0.1
  * @date 29/04/2025
  */
