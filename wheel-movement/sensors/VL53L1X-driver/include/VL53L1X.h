@@ -20,7 +20,7 @@
 #include "esp_timer.h"
 
 #include "VL53L1X_types.h"
-#include "platform_i2c_esp32s3.h"
+#include "platform_esp32s3.h"
 
 #include "driver/gpio.h"
 #include "esp_err.h"

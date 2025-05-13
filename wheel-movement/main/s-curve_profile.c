@@ -17,6 +17,7 @@
 
 #define SAMPLE_TIME 10 ///< Sample time in milliseconds
 
+
 typedef struct {
     // S-curve profile parameters filled
     float max_vel; ///< Maximum velocity in units per second
@@ -93,6 +94,7 @@ void app_main(void)
         vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); // Delay for 10 ms
     }
 }
+
 
 void generate_s_curve_profile(S_Curve_Profile *prof){
     assert((uint16_t)prof->time_to_target % SAMPLE_TIME == 0.0); ///< Ensure that the time_to_target is a multiple of SAMPLE_TIME
