@@ -45,10 +45,10 @@
 #define PWM_REV_GPIO 8 ///< GPIO number for PWM reverse signal
 #define PWM_FREQ 50 ///< PWM frequency in Hz
 #define PWM_RESOLUTION 100000 ///< PWM resolution in bits
-#define MAX_PWM_CAL 100 ///< Maximum PWM value
-#define MIN_PWM_CAL 20 ///< Minimum PWM value
-#define MAX_PWM_RE 98 ///< Maximum PWM value
-#define MIN_PWM_RE 56 ///< Minimum PWM value
+#define MAX_PWM_CAL 120 ///< Maximum PWM value
+#define MIN_PWM_CAL 35 ///< Minimum PWM value
+#define MAX_PWM_RE 119 ///< Maximum PWM value (moves fully)
+#define MIN_PWM_RE 38 ///< Minimum PWM value (does not move)
 
 #if MAIN_MODE == 0
 bldc_pwm_motor_t pwm, pwm2;
@@ -64,14 +64,14 @@ void app_main(void)
 
     ESP_LOGI("PWM", "Starting test..."); ///< Log message
 
-    bldc_init(&pwm, PWM_GPIO, 10, PWM_FREQ, 0, PWM_RESOLUTION); ///< Initialize the BLDC motor
-    bldc_init(&pwm2, PWM_REV_GPIO, 11, PWM_FREQ, 0, PWM_RESOLUTION); ///< Initialize the BLDC motor
+    bldc_init(&pwm, PWM_GPIO, 10, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_RE, MAX_PWM_RE); ///< Initialize the BLDC motor
+    bldc_init(&pwm2, PWM_REV_GPIO, 11, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_RE, MAX_PWM_RE); ///< Initialize the BLDC motor
 
     bldc_enable(&pwm); ///< Enable the BLDC motor
     bldc_enable(&pwm2); ///< Enable the BLDC motor
 
-    bldc_set_duty(&pwm, MIN_PWM_RE); ///< Set the duty cycle to 0%
-    bldc_set_duty(&pwm2, MIN_PWM_RE); ///< Set the duty cycle to 0%
+    bldc_set_duty_old(&pwm, MIN_PWM_CAL); ///< Set the duty cycle to 0%
+    bldc_set_duty_old(&pwm2, MIN_PWM_CAL); ///< Set the duty cycle to 0%
 
     vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Wait for 15 seconds    
 
@@ -82,22 +82,22 @@ void app_main(void)
         ESP_LOGI("PWM", "ESC running!"); ///< Log message
 
         duty += 2; ///< Increase the duty cycle
-        if (duty > 90) ///< If the duty cycle is greater than 100%
+        if (duty > (int32_t)(MAX_PWM_RE * 0.5)) ///< If the duty cycle is greater than 100%
         {
-            duty = 60; ///< Set the duty cycle to 0%
+            duty = MIN_PWM_RE; ///< Set the duty cycle to 0%
             reverse = !reverse; ///< Reverse the direction
 
-            bldc_set_duty(&pwm, MIN_PWM_RE); ///< Set the duty cycle to 0%
+            bldc_set_duty_old(&pwm, MIN_PWM_RE); ///< Set the duty cycle to 0%
             vTaskDelay(2000 / portTICK_PERIOD_MS); ///< Wait for 5 seconds
         }
         if (reverse) { ///< If the direction is reversed
             ESP_LOGI("PWM", "Motor running in reverse! PWM: %li.", duty); ///< Log message
-            bldc_set_duty(&pwm2, 90); ///< Set the duty cycle to the current PWM value
-            bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
+            bldc_set_duty_old(&pwm2, 90); ///< Set the duty cycle to the current PWM value
+            bldc_set_duty_old(&pwm, duty); ///< Set the duty cycle to 0%
         } else {
             ESP_LOGI("PWM", "Motor running in forward! PWM: %li.", duty); ///< Log message
-            bldc_set_duty(&pwm2, 10); ///< Set the duty cycle to 0%
-            bldc_set_duty(&pwm, duty); ///< Set the duty cycle to the current PWM value
+            bldc_set_duty_old(&pwm2, 10); ///< Set the duty cycle to 0%
+            bldc_set_duty_old(&pwm, duty); ///< Set the duty cycle to the current PWM value
         }
 
         vTaskDelay(100 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
@@ -107,11 +107,11 @@ void app_main(void)
     // bldc_init(&pwm, PWM_GPIO, PWM_REV_GPIO, PWM_FREQ, 0, PWM_RESOLUTION); ///< Initialize the BLDC motor
     // ESP_LOGI("BLDC", "BLDC initialaized!");
     // bldc_enable(&pwm); ///< Enable the BLDC motor
-    // bldc_set_duty(&pwm, 1000); ///< Set the duty cycle to 100%
+    // bldc_set_duty_old(&pwm, 1000); ///< Set the duty cycle to 100%
 
     // vTaskDelay(10000/portTICK_PERIOD_MS); ///< Wait 5 second
 
-    // bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
+    // bldc_set_duty_old(&pwm, 0); ///< Set the duty cycle to 0%
 
     // vTaskDelay(10000/portTICK_PERIOD_MS); ///< Wait 5 second
 
@@ -135,7 +135,7 @@ void app_main(void)
 //     // {
 //     //     if(current_timestamp % 1000 == 0) ///< Every second
 //     //     {
-//     //         bldc_set_duty(&pwm, pwm_list[current_timestamp / 1000]); ///< Set the duty cycle to the current PWM value
+//     //         bldc_set_duty_old(&pwm, pwm_list[current_timestamp / 1000]); ///< Set the duty cycle to the current PWM value
 //     //     }
 //     while(1){
 
@@ -163,53 +163,53 @@ bldc_pwm_motor_t pwm, pwm2;
 void app_main(void)
 {
     
-    bldc_init(&pwm, PWM_GPIO, 10, PWM_FREQ, 0, PWM_RESOLUTION); ///< Initialize the BLDC motor
-    bldc_init(&pwm2, PWM_REV_GPIO, 11, PWM_FREQ, 0, PWM_RESOLUTION); ///< Initialize the BLDC motor
+    bldc_init(&pwm, PWM_GPIO, 10, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
+    bldc_init(&pwm2, PWM_REV_GPIO, 11, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
     bldc_enable(&pwm); ///< Enable the BLDC motor
     bldc_enable(&pwm2); ///< Enable the BLDC motor
 
     ESP_LOGI("PWM", "Starting calibration!"); ///< Log message
-    bldc_set_duty(&pwm, MAX_PWM_CAL); ///< Set the duty cycle to 0%
-    bldc_set_duty(&pwm2, MAX_PWM_CAL); ///< Set the duty cycle to 0%
+    bldc_set_duty_old(&pwm, MAX_PWM_CAL); ///< Set the duty cycle to 0%
+    bldc_set_duty_old(&pwm2, MAX_PWM_CAL); ///< Set the duty cycle to 0%
 
     vTaskDelay(7000 / portTICK_PERIOD_MS); ///< Wait for 10 seconds
     
     ESP_LOGI("PWM", "PWM to 0!"); ///< Log message
-    bldc_set_duty(&pwm, MIN_PWM_CAL); ///< Set the duty cycle to 0%
-    bldc_set_duty(&pwm2, MIN_PWM_CAL); ///< Set the duty cycle to 0%
+    bldc_set_duty_old(&pwm, MIN_PWM_CAL); ///< Set the duty cycle to 0%
+    bldc_set_duty_old(&pwm2, MIN_PWM_CAL); ///< Set the duty cycle to 0%
 
     vTaskDelay(2000 / portTICK_PERIOD_MS); ///< Wait for 10 seconds
 
     ESP_LOGI("PWM", "ESC Calibrated!"); ///< Log message
 
-    // vTaskDelay(10000 / portTICK_PERIOD_MS); ///< Wait for 10 seconds
+    vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Wait for 10 seconds
 
-    // ESP_LOGI("PWM", "Starting test..."); ///< Log message
+    ESP_LOGI("PWM", "Starting test..."); ///< Log message
 
-    // int32_t duty = 0; ///< Duty cycle variable
-    // bool reverse = false; ///< Reverse variable
-    // while (1)
-    // {
-    //     ESP_LOGI("PWM", "ESC running!"); ///< Log message
+    int32_t duty = MIN_PWM_CAL; ///< Duty cycle variable
+    bool reverse = false; ///< Reverse variable
+    while (1)
+    {
+        ESP_LOGI("PWM", "ESC running!"); ///< Log message
 
-    //     duty += 10; ///< Increase the duty cycle
-    //     if (duty > 60) ///< If the duty cycle is greater than 100%
-    //     {
-    //         duty = MIN_PWM; ///< Set the duty cycle to 0%
-    //         reverse = !reverse; ///< Reverse the direction
-    //     }
-    //     if (reverse) { ///< If the direction is reversed
-    //         ESP_LOGI("PWM", "Motor running in reverse!"); ///< Log message
-    //         bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
-    //         bldc_set_duty(&pwm2, 70); ///< Set the duty cycle to the current PWM value
-    //     } else {
-    //         ESP_LOGI("PWM", "Motor running in forward!"); ///< Log message
-    //         bldc_set_duty(&pwm, duty); ///< Set the duty cycle to the current PWM value
-    //         bldc_set_duty(&pwm2, 30); ///< Set the duty cycle to 0%
-    //     }
-
-    //     vTaskDelay(1000 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
-    // }
+        duty += 1; ///< Increase the duty cycle
+        if (duty > MAX_PWM_CAL) ///< If the duty cycle is greater than 100%
+        {
+            duty = MIN_PWM_CAL; ///< Set the duty cycle to 0%
+            reverse = !reverse; ///< Reverse the direction
+        }
+        if (reverse) { ///< If the direction is reversed
+            ESP_LOGI("PWM", "Motor running in reverse! With duty: %li", duty); ///< Log message
+            bldc_set_duty_old(&pwm2, 90); ///< Set the duty cycle to the current PWM value
+            bldc_set_duty_old(&pwm, duty); ///< Set the duty cycle to 0%
+        } else {
+            ESP_LOGI("PWM", "Motor running in forward! With duty: %li", duty); ///< Log message
+            bldc_set_duty_old(&pwm2, 10); ///< Set the duty cycle to 0%
+            bldc_set_duty_old(&pwm, duty); ///< Set the duty cycle to the current PWM value
+        }
+        
+        vTaskDelay(1000 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
+    }
     
 }
 #endif

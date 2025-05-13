@@ -23,6 +23,8 @@
 #include "driver/mcpwm_prelude.h"
 #include "driver/gpio.h"
 
+#define MAP(val, in_min, in_max, out_min, out_max) ((val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) /*!< Map function */
+
 typedef struct {
     uint8_t rev_gpio_num;   ///< GPIO number
     uint8_t pwm_gpio_num;   ///< GPIO number
@@ -41,6 +43,10 @@ typedef struct {
     mcpwm_gen_handle_t gen;
     mcpwm_gen_handle_t gen_rev;
 
+    // PWM signal characteristics
+    uint8_t h_duty;  ///< Higher duty cycle
+    uint8_t l_duty;  ///< Lower duty cycle
+
 } bldc_pwm_motor_t;
 
 /**
@@ -51,8 +57,10 @@ typedef struct {
  * @param pwm_freq_hz 
  * @param group_id 
  * @param resolution_hz 
+ * @param high_duty
+ * @param low_duty
  */
-esp_err_t bldc_init(bldc_pwm_motor_t *motor, uint8_t pwm_gpio_num, uint8_t rev_gpio_num,uint32_t pwm_freq_hz, uint32_t group_id, uint32_t resolution_hz);
+esp_err_t bldc_init(bldc_pwm_motor_t *motor, uint8_t pwm_gpio_num, uint8_t rev_gpio_num,uint32_t pwm_freq_hz, uint32_t group_id, uint32_t resolution_hz, uint8_t high_duty, uint8_t low_duty);
 
 /**
  * @brief Enable the motor
@@ -74,6 +82,14 @@ esp_err_t bldc_disable(bldc_pwm_motor_t *motor);
  * @param motor instance of the motor
  * @param duty range from 0 to 1000, where 0 is 0% and 1000 is 100%
  */
-esp_err_t bldc_set_duty(bldc_pwm_motor_t *motor, uint32_t duty);
+esp_err_t bldc_set_duty_old(bldc_pwm_motor_t *motor, uint32_t duty);
+
+/**
+ * @brief Set the duty which will receive the ESC. The duty is a value between 0 and 1000
+ * 
+ * @param motor instance of the motor
+ * @param duty range from -100 to 100, negative means reverse
+ */
+esp_err_t bldc_set_duty(bldc_pwm_motor_t *motor, int16_t duty);
 
 #endif // __PWM_MOTOR_H__
