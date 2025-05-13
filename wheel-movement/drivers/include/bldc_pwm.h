@@ -23,8 +23,6 @@
 #include "driver/mcpwm_prelude.h"
 #include "driver/gpio.h"
 
-#define MAP(val, in_min, in_max, out_min, out_max) ((val - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) /*!< Map function */
-
 typedef struct {
     uint8_t rev_gpio_num;   ///< GPIO number
     uint8_t pwm_gpio_num;   ///< GPIO number
@@ -60,7 +58,7 @@ typedef struct {
  * @param high_duty
  * @param low_duty
  */
-esp_err_t bldc_init(bldc_pwm_motor_t *motor, uint8_t pwm_gpio_num, uint8_t rev_gpio_num,uint32_t pwm_freq_hz, uint32_t group_id, uint32_t resolution_hz, uint8_t high_duty, uint8_t low_duty);
+esp_err_t bldc_init(bldc_pwm_motor_t *motor, uint8_t pwm_gpio_num, uint8_t rev_gpio_num,uint32_t pwm_freq_hz, uint32_t group_id, uint32_t resolution_hz, uint8_t low_duty, uint8_t high_duty);
 
 /**
  * @brief Enable the motor
