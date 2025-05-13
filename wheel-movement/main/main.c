@@ -27,10 +27,10 @@
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
-#define AS5600_I2C_MASTER_SCL_GPIO 4  ///< gpio number for I2C master clock
-#define AS5600_I2C_MASTER_SDA_GPIO 5  ///< gpio number for I2C master data 
-#define AS5600_OUT_GPIO 6             ///< gpio number for OUT signal
-#define AS5600_I2C_MASTER_NUM 1       ///< I2C port number for master dev
+#define AS5600_I2C_MASTER_SCL_GPIO 5  ///< gpio number for I2C master clock
+#define AS5600_I2C_MASTER_SDA_GPIO 4  ///< gpio number for I2C master data 
+#define AS5600_OUT_GPIO 7             ///< gpio number for OUT signal
+#define AS5600_I2C_MASTER_NUM 0       ///< I2C port number for master dev
 #define AS5600_MODE 1                 ///< Calibration = 0, Angle through ADC = 1
 ///<--------------------------------------------------
 
@@ -65,7 +65,33 @@ float angle; ///< Angle read from the AS5600 sensor
 void app_main(void)
 {
     ///<------------- Initialize the AS5600 sensor -------
-    gAs5600.out = AS5600_OUT_GPIO; ///< GPIO number for OUT signal
+    AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
+
+    // Set some configurations to the AS5600
+    AS5600_config_t conf = {
+        .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
+        .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
+        .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
+        .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
+        .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
+        .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
+        .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+    };
+    AS5600_SetConf(&gAs5600, conf);
+    
+    // Read the configuration
+    uint16_t conf_reg;
+    AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
+    printf("Configuration register read: 0x%04X\n", conf_reg);
+    printf("Configuration register written: 0x%04X\n", conf.WORD);
+
+    AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg);
+
+    printf("Status register read: 0x%02X\n", conf_reg);
+
+    AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0
+    AS5600_SetStopPosition(&gAs5600, 4095); ///< Set the stop position to 4095
+
     AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
     ///<--------------------------------------------------
 
@@ -82,7 +108,7 @@ void app_main(void)
 
 
     ///<----------- Initialize the BLDC motor PWM --------
-    ESP_LOGI("PWM", "Starting test..."); ///< Log message
+    // ESP_LOGI("PWM", "Starting test..."); ///< Log message
     bldc_init(&pwm, PWM_GPIO, PWM_REV_GPIO, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
     bldc_enable(&pwm); ///< Enable the BLDC motor
     bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
@@ -94,36 +120,39 @@ void app_main(void)
     bool reverse = false; ///< Reverse variable
     while (1)
     {
-        ESP_LOGI("PWM", "ESC running!"); ///< Log message
+        // ESP_LOGI("PWM", "ESC running!"); ///< Log message
 
         ///<-------------- Get angle through ADC -------------
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
         ESP_LOGI("Encoder_ADC", "Angle: %f", angle); ///< Log message
+        // vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 10 miliseconds
         ///<--------------------------------------------------
 
         ///<-------------- Get distance through VL53L1X ------
         /* ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); */
         ///<--------------------------------------------------
 
-        if (abs(duty) > 50) ///< If the duty cycle is greater than 100%
-        {
-            if(reverse) duty = -1; ///< Set the duty cycle to 0%
-            else duty = 1; ///< Set the duty cycle to 0%
-            reverse = !reverse; ///< Reverse the direction
-            bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
-            vTaskDelay(2000 / portTICK_PERIOD_MS); ///< Wait for 5 seconds
-        }
-        if (reverse) { ///< If the direction is reversed
-            duty -= 5; ///< Increase the reverse duty cycle
-            ESP_LOGI("PWM", "Motor running in reverse! PWM: %hd.", duty); ///< Log message
-            bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
-        } else {
-            duty += 5; ///< Increase the forward duty cycle
-            ESP_LOGI("PWM", "Motor running in forward! PWM: %hd.", duty); ///< Log message
-            bldc_set_duty(&pwm, duty); ///< Set the duty cycle to the current PWM value
-        }
+        // if (abs(duty) > 50) ///< If the duty cycle is greater than 100%
+        // {
+        //     if(reverse) duty = -1; ///< Set the duty cycle to 0%
+        //     else duty = 1; ///< Set the duty cycle to 0%
+        //     reverse = !reverse; ///< Reverse the direction
+        //     bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
+        //     vTaskDelay(1000 / portTICK_PERIOD_MS); ///< Wait for 5 seconds
+        // }
+        // if (reverse) { ///< If the direction is reversed
+        //     duty -= 2; ///< Increase the reverse duty cycle
+        //     // ESP_LOGI("PWM", "Motor running in reverse! PWM: %hd.", duty); ///< Log message
+        //     bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
+        // } else {
+        //     duty += 2; ///< Increase the forward duty cycle
+        //     // ESP_LOGI("PWM", "Motor running in forward! PWM: %hd.", duty); ///< Log message
+        //     bldc_set_duty(&pwm, duty); ///< Set the duty cycle to the current PWM value
+        // }
 
-        vTaskDelay(100 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
+        // bldc_set_duty(&pwm, 10); ///< Set the duty cycle to 0%
+
+        vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
     }
 
 }

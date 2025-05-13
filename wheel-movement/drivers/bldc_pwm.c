@@ -130,8 +130,8 @@ esp_err_t bldc_set_duty(bldc_pwm_motor_t *motor, int16_t duty)
     uint16_t mapped_duty = (uint8_t)((float)duty * (float)(motor->h_duty - motor->l_duty) / (float)100) + motor->l_duty;
     uint16_t mapped_rev  = (uint8_t)((float)rev_pwm * (float)(motor->h_duty - motor->l_duty) / (float)100) + motor->l_duty;
 
-    ESP_LOGI(BLDC_TAG, "Duty: %hd, Mapped duty: %hu", duty, mapped_duty);
-    ESP_LOGI(BLDC_TAG, "Rev duty: %hu, Mapped rev: %hu", rev_pwm, mapped_rev);
+    // ESP_LOGI(BLDC_TAG, "Duty: %hd, Mapped duty: %hu", duty, mapped_duty);
+    // ESP_LOGI(BLDC_TAG, "Rev duty: %hu, Mapped rev: %hu", rev_pwm, mapped_rev);
 
     uint32_t nw_cmp = motor->max_cmp * mapped_duty / 1000; 
     uint32_t nw_cmp_rev = motor->max_cmp * mapped_rev / 1000;
