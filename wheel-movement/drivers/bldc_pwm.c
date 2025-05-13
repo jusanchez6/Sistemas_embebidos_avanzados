@@ -121,10 +121,10 @@ esp_err_t bldc_set_duty(bldc_pwm_motor_t *motor, int16_t duty)
 
     uint8_t rev_pwm;
     if(duty < 0){ ///< If the duty is negative, set the reverse duty
-        rev_pwm = 90; 
+        rev_pwm = 10; 
         duty = -duty;
     } else {
-        rev_pwm = 10;
+        rev_pwm = 90;
     }
 
     uint16_t mapped_duty = (uint8_t)((float)duty * (float)(motor->h_duty - motor->l_duty) / (float)100) + motor->l_duty;

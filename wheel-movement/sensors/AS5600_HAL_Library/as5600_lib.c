@@ -25,7 +25,6 @@ float AS5600_ADC_GetAngle(AS5600_t *as5600)
     if (as5600->adc_handle.is_calibrated && as5600->conf.OUTS == AS5600_OUTPUT_STAGE_ANALOG_RR) {
         uint16_t voltage;
         adc_read_mvolt(&as5600->adc_handle, &voltage);
-        ESP_LOGI("ADC", "Voltage: %d mV", voltage); // Log the voltage read from the ADC
         voltage = LIMIT(voltage, VCC_3V3_MIN_RR_MV, VCC_3V3_MAX_RR_MV); // The OUT pin of the AS5600 sensor has a range of 10%-90% of VCC
         angle = MAP((float)voltage, VCC_3V3_MIN_RR_MV, VCC_3V3_MAX_RR_MV, 0, 360); // Map the voltage to the angle
     }

@@ -118,15 +118,24 @@ void app_main(void)
 
     int16_t duty = 0; ///< Duty cycle variable
     bool reverse = false; ///< Reverse variable
-    while (1)
+    float last_angle = 0;
+    for (uint16_t i = 0; i < 500; i++)
     {
         // ESP_LOGI("PWM", "ESC running!"); ///< Log message
 
         ///<-------------- Get angle through ADC -------------
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
-        ESP_LOGI("Encoder_ADC", "Angle: %f", angle); ///< Log message
+        // ESP_LOGI("Encoder_ADC", "Angle: %f", angle); ///< Log message
         // vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 10 miliseconds
         ///<--------------------------------------------------
+
+        if(i){
+            float diff = angle - last_angle;
+            if(diff < 0) diff += 360;
+
+            ESP_LOGI("Encoder_PWM", "Angle: %f, RPM: %f", angle, diff* (float)(100 / 6)); ///< Log message
+            last_angle = angle;
+        }
 
         ///<-------------- Get distance through VL53L1X ------
         /* ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); */
@@ -150,10 +159,12 @@ void app_main(void)
         //     bldc_set_duty(&pwm, duty); ///< Set the duty cycle to the current PWM value
         // }
 
-        // bldc_set_duty(&pwm, 10); ///< Set the duty cycle to 0%
+        bldc_set_duty(&pwm, 80); ///< Set the duty cycle to the current PWM value
 
         vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
     }
+
+    bldc_set_duty(&pwm, 0); ///< Set the duty cycle to the current PWM value
 
 }
 #endif
