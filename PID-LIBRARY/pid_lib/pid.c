@@ -1,16 +1,16 @@
 /**
- * @file sensorRGB.c
+ * @file pid.h
  * 
- * @brief Sensor RGB simple usage example
+ * @brief Simple pid implementation file
  * 
- * This file contains a simple example of how to use the APDS9960 sensor to read RGB values.
+ * This file contains the implementation of a simple PID controller.
  * 
  * @authors Julian Sanchez
  *          Angel Graciano
  *          Nelson Parra
  * 
  * 
- * @date 08-04-2025
+ * @date 30-04-2025
  * 
  * @version 1.0
  * 
@@ -38,39 +38,55 @@
 */
 
 
-
 #include <stdio.h>
+#include "pid.h"
 
-
-#include "apds9960.h"
-
-#define I2C_MASTER_SCL_IO 17
-#define I2C_MASTER_SDA_IO 18
-#define I2C_MASTER_NUM I2C_NUM_0
-
-
-void app_main(void)
-{
-    APDS9960_t apds9960 = {};
-    APDS9960_init(&apds9960, I2C_MASTER_NUM, I2C_MASTER_SDA_IO, I2C_MASTER_SCL_IO);    
-
-    // Set the mode to enable ALS and Proximity detection
-    APDS9960_set_mode(&apds9960, APDS9960_AEN_ENABLE);
-    APDS9960_set_gain(&apds9960, APDS9960_AGAIN_64X);
-
-
+esp_err_t PID_Init(PIDController *pid, float Kp, float Ki, float Kd) {
     
+    // Initialize PID gains
+    pid->Kp = Kp;
+    pid->Ki = Ki;
+    pid->Kd = Kd;
+    
+    // Initialize other parameters
+    pid->setpoint = 0.0f;
+    pid->integral = 0.0f;
+    
+    // Initialize previous error
+    pid->previous_error = 0.0f;
+    
+    // Initialize control output
+    pid->control = 0.0f;
 
-    while (1) {
-        uint16_t r, g, b;
-        APDS9960_get_RGB(&apds9960, &r, &g, &b, true);
-        printf("R: %d, G: %d, B: %d\n", r, g, b);
+    return ESP_OK;
+}
 
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-    }
-
-    APDS9960_disable(&apds9960); // Disable the sensor
-
+void PID_SetSetpoint(PIDController *pid, float setpoint) {
+    pid->setpoint = setpoint;
 
 }
+
+esp_err_t PID_Compute(PIDController *pid, float measured_value, float dt) {
+    // Calculate error
+    float error = pid->setpoint - measured_value;
+    
+    // Proportional term
+    float Pout = pid->Kp * error;
+    
+    // Integral term
+    pid->integral += error * dt;
+    float Iout = pid->Ki * pid->integral;
+    
+    // Derivative term
+    float derivative = (error - pid->previous_error) / dt;
+    float Dout = pid->Kd * derivative;
+
+    
+    // Save current error for next iteration
+    pid->previous_error = error;
+
+    pid->control = Pout + Iout + Dout;
+    
+    return ESP_OK;
+}
+
