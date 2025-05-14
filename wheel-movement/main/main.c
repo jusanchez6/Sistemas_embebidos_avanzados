@@ -72,8 +72,10 @@
 ///<--------------------------------------------------
 
 ///<------------- TM151 configuration ----------------
-#define UART_TX 17              ///< Gpio pin for UART TX
-#define UART_RX 18              ///< GPIO pin for UART RX
+#define UART_TX 17                          ///< Gpio pin for UART TX
+#define UART_RX 18                          ///< GPIO pin for UART RX
+static const char* TAG_TM151 = "TM151";     ///< Tag for TM151
+
 ///<--------------------------------------------------
 
 ///<------------- VL53L1X configuration --------------
@@ -95,12 +97,18 @@
 
 #if MAIN_MODE == 0
 
-
-//
+// configuration of motors
 bldc_pwm_motor_t pwm, pwm2;
 
+// object to control the magnetic rotary encoder
 AS5600_t gAs5600;
-//vl53l1x_t gVl53l1x;
+
+// Object to control the 
+vl53l1x_t gVl53l1x;
+
+// object to control the TM151
+uart_t myUART;                  ///< UART object
+
 
 float angle; ///< Angle read from the AS5600 sensor
 
@@ -137,8 +145,9 @@ void app_main(void)
     AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
     ///<--------------------------------------------------
 
+
     ///<-------------- Initialize the VL53L1X sensor -----
-    /*if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
         ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
         return;
     }
@@ -146,8 +155,20 @@ void app_main(void)
     VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
     VL53L1X_startContinuous(&gVl53l1x, 30);
     ///<--------------------------------------------------
-    */
+    
 
+    ///<-------------- Initialize the TM151 sensor ------
+    if (!uart.init_with_defaults(&myUART, 115200, 1024, UART_TX, UART_RX) ) {
+        ESP_LOGI(TAG_TM151, "Could not initialize  TM151 sensor... ");
+        return;
+    }
+    ESP_LOGI(TAG_TM151, "TM151 initialized! ");
+
+    // Initialize the TM151 interface
+    
+    EasyProfile_C_Interface_Init();
+
+    ///<--------------------------------------------------
 
     ///<----------- Initialize the BLDC motor PWM --------
     // ESP_LOGI("PWM", "Starting test..."); ///< Log message
@@ -161,14 +182,14 @@ void app_main(void)
     int16_t duty = 0; ///< Duty cycle variable
     bool reverse = false; ///< Reverse variable
     float last_angle = 0;
+
+
     for (uint16_t i = 0; i < 500; i++)
     {
         // ESP_LOGI("PWM", "ESC running!"); ///< Log message
 
         ///<-------------- Get angle through ADC -------------
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
-        // ESP_LOGI("Encoder_ADC", "Angle: %f", angle); ///< Log message
-        // vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 10 miliseconds
         ///<--------------------------------------------------
 
         if(i){
@@ -180,7 +201,21 @@ void app_main(void)
         }
 
         ///<-------------- Get distance through VL53L1X ------
-        /* ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); */
+        ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); */
+        ///<--------------------------------------------------
+
+
+        ///<-------------- Get data from TM151 --------------
+        uint16_t toId = EP_ID_BROADCAST_;
+        char* txData;
+        int txSize;
+
+        if (EP_SUCC_ == EasyProfile_C_Interface_TX_Request(toId, EP_CMD_RPY_, &txData, &txSize)) {
+            uart_write(&myUART, (uint8_t*)txData, (size_t)txSize);
+        } 
+
+        SerialPort_DataGet(&myUART);
+
         ///<--------------------------------------------------
 
         // if (abs(duty) > 50) ///< If the duty cycle is greater than 100%
