@@ -1,60 +1,102 @@
 /**
  * @file main.c
- * @author Striker 1
- * @brief Main file for obtaining the angle from the AS5600 sensor
- * @details For wheel modeling purposes, this code is used to obtain the angle from the AS5600 sensor. The angle is obtained through the ADC and the GPIO pin.
- * @version 0.1
- * @date 23/04/2025
  * 
- * @copyright Copyright (c) 2025
+ * @brief main file for obtaining data from sensors and controlle the wheels
  * 
- */
+ * Main file for wheel modeling purposes, this code is used to get the data from the sensors AS5600, VL531Lx and TM151 
+ * 
+ * @authors Julian Sanchez
+ *          Angel Graciano
+ *          Nelson Parra
+ * 
+ * 
+ * @date 14-05-2025
+ * 
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) RoboCup SISTEMIC 2025 
+ * 
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+*/
 
+
+// Include standar libraries 
 #include <stdio.h>
 
+// Include personalized sensors libraries
 #include "as5600_lib.h"
-//#include "VL53L1X.h"
+#include "VL53L1X.h"
+#include "EasyObjectDictionary.h"
+#include "EasyProfile.h"
+#include "EasyRetrieve.h"
 #include "bldc_pwm.h"
 
+
+// Include ESP IDF libraries
 #include <assert.h>
 #include "esp_partition.h"
 #include "spi_flash_mmap.h"
-
 #include "freertos/task.h"
+
+
+
 
 ///<---------- Main mode: ------------------------
 #define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
-#define AS5600_I2C_MASTER_SCL_GPIO 5  ///< gpio number for I2C master clock
-#define AS5600_I2C_MASTER_SDA_GPIO 4  ///< gpio number for I2C master data 
-#define AS5600_OUT_GPIO 7             ///< gpio number for OUT signal
-#define AS5600_I2C_MASTER_NUM 0       ///< I2C port number for master dev
-#define AS5600_MODE 1                 ///< Calibration = 0, Angle through ADC = 1
+#define AS5600_I2C_MASTER_SCL_GPIO 5    ///< gpio number for I2C master clock
+#define AS5600_I2C_MASTER_SDA_GPIO 4    ///< gpio number for I2C master data 
+#define AS5600_OUT_GPIO 7               ///< gpio number for OUT signal
+#define AS5600_I2C_MASTER_NUM 0         ///< I2C port number for master dev
+#define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
 ///<--------------------------------------------------
 
 ///<------------- TM151 configuration ----------------
+#define UART_TX 17              ///< Gpio pin for UART TX
+#define UART_RX 18              ///< GPIO pin for UART RX
 ///<--------------------------------------------------
 
 ///<------------- VL53L1X configuration --------------
-#define VL53L1X_I2C_PORT 0
-#define VL53L1X_SDA_GPIO 21
-#define VL53L1X_SCL_GPIO 22
+#define VL53L1X_I2C_PORT 0      ///< I2C port number for master dev
+#define VL53L1X_SDA_GPIO 21     ///< gpio number for I2C master data 
+#define VL53L1X_SCL_GPIO 22     ///< gpio number for I2C mastes clock
 ///<--------------------------------------------------
 
 ///<-------------- BLDC configuration -----------------
-#define PWM_GPIO 3 ///< GPIO number for PWM signal
-#define PWM_REV_GPIO 8 ///< GPIO number for PWM reverse signal
-#define PWM_FREQ 50 ///< PWM frequency in Hz
-#define PWM_RESOLUTION 100000 ///< PWM resolution in bits
-#define MAX_PWM_CAL 120 ///< Maximum PWM value
-#define MIN_PWM_CAL 35 ///< Minimum PWM value
-#define MAX_PWM_RE 119 ///< Maximum PWM value (moves fully)
-#define MIN_PWM_RE 38 ///< Minimum PWM value (does not move)
+#define PWM_GPIO 3                  ///< GPIO number for PWM signal
+#define PWM_REV_GPIO 8              ///< GPIO number for PWM reverse signal
+#define PWM_FREQ 50                 ///< PWM frequency in Hz
+#define PWM_RESOLUTION 100000       ///< PWM resolution in bits
+#define MAX_PWM_CAL 120             ///< Maximum PWM value
+#define MIN_PWM_CAL 35              ///< Minimum PWM value
+#define MAX_PWM_RE 119              ///< Maximum PWM value (moves fully)
+#define MIN_PWM_RE 38               ///< Minimum PWM value (does not move)
 ///<--------------------------------------------------
 
 #if MAIN_MODE == 0
+
+
+//
 bldc_pwm_motor_t pwm, pwm2;
 
 AS5600_t gAs5600;
