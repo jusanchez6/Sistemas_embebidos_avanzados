@@ -1,0 +1,79 @@
+/** @mainpage TM151 IMU TransducerM 9-axis Driver
+
+@par Supported Targets
+ESP32-S3
+
+@section intro Introduction
+
+This project implements support for the TM151 IMU sensor on the ESP32-S3 using UART communication.  
+The driver is based on the example provided by Syd Dynamics and has been adapted to work with FreeRTOS using the ESP-IDF framework.
+
+@section code Code
+
+The example provided demonstrates how to:
+- Initialize UART communication with the TM151
+- Configure the device using predefined commands
+- Receive and parse sensor data
+
+Most settings can be modified through macros, allowing customization of behavior and communication parameters.
+
+@section assistant IMU Assistant Software
+
+Syd Dynamics provides a companion desktop application to configure the TM151 device.  
+Using this software, you can change:
+- Baud rate
+- Enabled sensors
+- Data output content and format
+- Boot mode
+- Communication options
+
+@section calibration Calibration
+
+Calibration is typically performed automatically at boot depending on the configured mode.  
+The quality and precision of the readings depend on the calibration state and environment.  
+Manual calibration and configuration can also be done through the assistant software.
+
+@section doc Documentation
+
+This project includes full API documentation.  
+To generate it, run the following command in the root folder:
+
+@code{.bash}
+doxygen Doxyfile
+@endcode
+
+
+ * 
+ * @section license_sec License
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * 
+ * 
+ * @section author_sec Author
+ * 
+ * 
+ * Developed by Julian Sanchez
+                Nelson Parra
+                Angel Graciano
+ * 
+ * @version 1.0
+ * @date April 08, 2025
+ */
