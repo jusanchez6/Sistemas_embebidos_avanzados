@@ -1,48 +1,178 @@
-#include <stdio.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "driver/uart.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 #include "esp_log.h"
+#include <string.h>
 
-static const char* TAG = "uart_task";
-#define UART_NUM    UART_NUM_0
-#define BUF_SIZE    256
+#define UART_NUM       UART_NUM_0
+#define TXD_PIN        UART_PIN_NO_CHANGE   // o define el GPIO de TX
+#define RXD_PIN        UART_PIN_NO_CHANGE   // o define el GPIO de RX
+#define BUF_SIZE       (1024)
+#define QUEUE_SIZE     10
 
-/**
- * @brief Tarea que lee de UART y hace eco de lo recibido.
- */
-static void uart_task(void* arg)
+static const char *TAG = "uart_int_evt";
+static QueueHandle_t uart_queue;
+void AS5600_init_and_calibration(void);
+void sensor_calibration_cb(void *arg);
+void uart_command_init();
+
+#include <stdio.h>
+#include "as5600_lib.h"
+
+#define I2C_MASTER_SCL_GPIO 4       /*!< gpio number for I2C master clock */
+#define I2C_MASTER_SDA_GPIO 5       /*!< gpio number for I2C master data  */
+#define AS5600_OUT_GPIO 6           /*!< gpio number for OUT signal */
+#define I2C_MASTER_NUM 1            /*!< I2C port number for master dev */
+
+AS5600_t gAs5600;
+
+#include "esp_timer.h"
+esp_timer_handle_t gOneshotTimer;
+uint8_t cnt_cali; ///< Counter for the calibration process
+
+#include <inttypes.h>
+#include "sdkconfig.h"
+#include "EasyObjectDictionary.h"
+#include "EasyProfile.h"
+#include "platform_esp32s3.h" // Include the platform-specific header file for ESP32-S3
+#include "EasyRetrieve.h"
+
+#include <portmacro.h>
+
+#define UART_TX 17 // GPIO pin for UART TX
+#define UART_RX 18 // GPIO pin for UART RX
+
+uart_t myUART;
+
+void sensor_calibration_cb(void *arg)
 {
-    uint8_t buf[BUF_SIZE];
-    while (1) {
-        int len = uart_read_bytes(UART_NUM, buf, BUF_SIZE - 1, pdMS_TO_TICKS(1000));
-        if (len > 0) {
-            buf[len] = '\0';
-            printf("Eco UART: %s", (char*)buf);
+    switch (cnt_cali) {
+        case 0:
+            printf("AS5600 calibration step 1. As step 4 in page 23 of the datasheet, move the magnet (or wheel) to the MAX position.\n");
+
+            AS5600_DeinitGPIO(&gAs5600); ///< Deinitialize the GPIO driver
+            cnt_cali++;
+            esp_timer_start_once(gOneshotTimer, 5*1000*1000); ///< Start the timer to calibrate the AS5600 sensor
+            break;
+        case 1:
+            printf("AS5600 calibration step 2\n");
+
+            AS5600_InitGPIO(&gAs5600); ///< Initialize the GPIO driver
+            AS5600_SetGPIO(&gAs5600, 0); ///< Set the GPIO pin to low (GND)
+            cnt_cali++;
+            esp_timer_start_once(gOneshotTimer, 500*1000); ///< Start the timer to calibrate the AS5600 sensor
+            break;
+        case 2:
+            printf("AS5600 calibration step 3\n");
+
+            AS5600_DeinitGPIO(&gAs5600); ///< Deinitialize the GPIO driver
+            AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
+
+            /**
+             * @brief If the readed voltage is always 0, this indicates an error occurred during calibration.
+             * 
+             */
+            float angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
+            printf("angle-> %0.2f\n", angle);
+
+            // Read n times the angle.
+            for (int i = 0; i < 100; i++) {
+                vTaskDelay(1000 / portTICK_PERIOD_MS); ///< Wait 1s
+                angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
+                printf("angle-> %0.2f\n", angle);
+            }
+
+            esp_timer_delete(gOneshotTimer); ///< Delete the timer
+            break;
+        default:
+            printf("AS5600 calibration finished");
+            break;
+    }
+}
+void AS5600_init_and_calibration(void) {
+   ///< ---------------------- AS5600 -------------------
+   AS5600_Init(&gAs5600, I2C_MASTER_NUM, I2C_MASTER_SCL_GPIO, I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
+
+   // Set some configurations to the AS5600
+   AS5600_config_t conf = {
+       .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
+       .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
+       .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
+       .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
+       .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
+       .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
+       .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+   };
+   AS5600_SetConf(&gAs5600, conf);
+   
+   // Read the configuration
+   uint16_t conf_reg;
+   AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
+   printf("Configuration register readed: 0x%04X\n", conf_reg);
+   printf("Configuration register written: 0x%04X\n", conf.WORD);
+
+
+   ///< ------------- For calibration process. -------------
+   // Create a one-shot timer to control the sequence
+   const esp_timer_create_args_t oneshot_timer_args = {
+       .callback = &sensor_calibration_cb,
+       .arg = NULL, ////< argument specified here will be passed to timer callback function
+       .name = "as5600_cali-one-shot" ///< name is optional, but may help identify the timer when debugging
+   };
+   esp_timer_handle_t oneshot_timer;
+   ESP_ERROR_CHECK(esp_timer_create(&oneshot_timer_args, &oneshot_timer));
+   gOneshotTimer = oneshot_timer;
+   cnt_cali = 0; ///< Initialize the counter for the calibration process
+
+   ESP_ERROR_CHECK(esp_timer_start_once(gOneshotTimer, 500*1000)); ///< Start the timer to calibrate the AS5600 sensor
+   ESP_LOGI("app_main", "AS5600 calibration timer started");
+    
+}
+
+static void uart_event_task(void *arg) {
+    
+    uart_event_t event;
+    uint8_t* dtmp = malloc(BUF_SIZE);
+    for (;;) {
+        // Espera a que ocurra un evento UART
+        if (xQueueReceive(uart_queue, &event, portMAX_DELAY)) {
+            if (event.type == UART_DATA) {
+                int len = uart_read_bytes(UART_NUM, dtmp, event.size, portMAX_DELAY);
+                dtmp[len] = '\0';
+                ESP_LOGI(TAG, "Recibido: %s", (char*)dtmp);
+                // Procesar comando recibido…
+            }
+            // manejar otros tipos de evento si se desea
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
-void app_main(void)
-{
-    // 1) Configurar UART0
-    uart_config_t uart_cfg = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_cfg));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE,
-                                UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0));
-
-    ESP_LOGI(TAG, "Creando tarea de UART...");
-    // 2) Crear la tarea de UART con prioridad 5 y stack de 2048 bytes
-    xTaskCreate(uart_task, "uart_task", 2048, NULL, 5, NULL);
-
-    // 3) Aquí puedes inicializar más cosas o lanzar otras tareas...
-    //    app_main no debe bloquearse (ni usar while(1) aquí).
+void uart_command_init() {
+        // 1. Configurar parámetros UART
+        const uart_config_t uart_config = {
+            .baud_rate = 115200,
+            .data_bits = UART_DATA_8_BITS,
+            .parity    = UART_PARITY_DISABLE,
+            .stop_bits = UART_STOP_BITS_1,
+            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+            .source_clk = UART_SCLK_APB,
+        };
+        ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_config));  
+        ESP_ERROR_CHECK(uart_set_pin(UART_NUM, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));  
+    
+        // 2. Instalar driver con cola de eventos
+        ESP_ERROR_CHECK(uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, QUEUE_SIZE, &uart_queue, 0));  
+    
+        // 3. Crear tarea que atienda los eventos
+        xTaskCreate(uart_event_task, "uart_evt", 2048, NULL, 12, NULL);
+    
+        // Enviar mensaje inicial al PC
+        const char* init = "ESP32-S3 listo\r\n";
+        uart_write_bytes(UART_NUM, init, strlen(init));
 }
+
+void app_main(void) {
+
+
+}
+
