@@ -80,8 +80,8 @@ static const char* TAG_TM151 = "TM151";     ///< Tag for TM151
 
 ///<------------- VL53L1X configuration --------------
 #define VL53L1X_I2C_PORT 0      ///< I2C port number for master dev
-#define VL53L1X_SDA_GPIO 21     ///< gpio number for I2C master data 
-#define VL53L1X_SCL_GPIO 20     ///< gpio number for I2C mastes clock
+#define VL53L1X_SDA_GPIO 16     ///< gpio number for I2C master data 
+#define VL53L1X_SCL_GPIO 15     ///< gpio number for I2C mastes clock
 ///<--------------------------------------------------
 
 ///<-------------- BLDC configuration -----------------
@@ -158,7 +158,7 @@ void app_main(void)
     
 
     ///<-------------- Initialize the TM151 sensor ------
-    if (!myUART.init_with_defaults(&myUART, 115200, 1024, UART_TX, UART_RX) ) {
+    if (!uart_init_with_defaults(&myUART, 115200, 1024, UART_TX, UART_RX) ) {
         ESP_LOGI(TAG_TM151, "Could not initialize  TM151 sensor... ");
         return;
     }
@@ -201,7 +201,7 @@ void app_main(void)
         }
 
         ///<-------------- Get distance through VL53L1X ------
-        ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); */
+        ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); 
         ///<--------------------------------------------------
 
 
