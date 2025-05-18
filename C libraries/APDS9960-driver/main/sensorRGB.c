@@ -72,7 +72,5 @@ void app_main(void)
 
     APDS9960_disable(&apds9960); // Disable the sensor
 
-    return 0;
-
 
 }

@@ -2,11 +2,18 @@
 
 The best course in Electronic Engineering has its own repository. Here you'll find a well-organized collection of sensor drivers and some programs developed throughout the course.
 
+# LAB 1.
+
+In this lab all asked to development all the sensor used in the robot, this work could be find at the folder ``` C libraries ```
+and contains the follow drivers for the sensors:
+
 ## Drivers
 - [x] T-AS5600 Magnetic Encoder  
 - [x] VL6180 Laser Range Sensor  
 - [x] TM151 IMU  
 - [x] APDS-9960 RGB Sensor  
+
+The Driver structure for all the sensors is presented below
 
 ## Driver Structure
 
@@ -50,3 +57,7 @@ idf_component_register(
 )
 
 ``` 
+
+# LAB2
+
+

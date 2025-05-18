@@ -1,64 +1,114 @@
 /**
  * @file main.c
- * @author Striker 1
- * @brief Main file for obtaining the angle from the AS5600 sensor
- * @details For wheel modeling purposes, this code is used to obtain the angle from the AS5600 sensor. The angle is obtained through the ADC and the GPIO pin.
- * @version 0.1
- * @date 23/04/2025
  * 
- * @copyright Copyright (c) 2025
+ * @brief main file for obtaining data from sensors and controlle the wheels
  * 
- */
+ * Main file for wheel modeling purposes, this code is used to get the data from the sensors AS5600, VL531Lx and TM151 
+ * 
+ * @authors Julian Sanchez
+ *          Angel Graciano
+ *          Nelson Parra
+ * 
+ * 
+ * @date 14-05-2025
+ * 
+ * @version 1.0
+ * 
+ * @copyright Copyright (c) RoboCup SISTEMIC 2025 
+ * 
+ * MIT LICENSE
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+*/
 
+
+// Include standar libraries 
 #include <stdio.h>
 
+// Include personalized sensors libraries
 #include "as5600_lib.h"
-//#include "VL53L1X.h"
+#include "VL53L1X.h"
+#include "EasyObjectDictionary.h"
+#include "EasyProfile.h"
+#include "EasyRetrieve.h"
 #include "bldc_pwm.h"
 
+
+// Include ESP IDF libraries
 #include <assert.h>
 #include "esp_partition.h"
 #include "spi_flash_mmap.h"
-
 #include "freertos/task.h"
+
+
+
 
 ///<---------- Main mode: ------------------------
 #define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
-#define AS5600_I2C_MASTER_SCL_GPIO 5  ///< gpio number for I2C master clock
-#define AS5600_I2C_MASTER_SDA_GPIO 4  ///< gpio number for I2C master data 
-#define AS5600_OUT_GPIO 7             ///< gpio number for OUT signal
-#define AS5600_I2C_MASTER_NUM 0       ///< I2C port number for master dev
-#define AS5600_MODE 1                 ///< Calibration = 0, Angle through ADC = 1
+#define AS5600_I2C_MASTER_SCL_GPIO 5    ///< gpio number for I2C master clock
+#define AS5600_I2C_MASTER_SDA_GPIO 4    ///< gpio number for I2C master data 
+#define AS5600_OUT_GPIO 7               ///< gpio number for OUT signal
+#define AS5600_I2C_MASTER_NUM 0         ///< I2C port number for master dev
+#define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
 ///<--------------------------------------------------
 
 ///<------------- TM151 configuration ----------------
+#define UART_TX 17                          ///< Gpio pin for UART TX
+#define UART_RX 18                          ///< GPIO pin for UART RX
+static const char* TAG_TM151 = "TM151";     ///< Tag for TM151
+
 ///<--------------------------------------------------
 
 ///<------------- VL53L1X configuration --------------
-#define VL53L1X_I2C_PORT 0
-#define VL53L1X_SDA_GPIO 21
-#define VL53L1X_SCL_GPIO 22
+#define VL53L1X_I2C_PORT 0      ///< I2C port number for master dev
+#define VL53L1X_SDA_GPIO 21     ///< gpio number for I2C master data 
+#define VL53L1X_SCL_GPIO 20     ///< gpio number for I2C mastes clock
 ///<--------------------------------------------------
 
 ///<-------------- BLDC configuration -----------------
-#define PWM_GPIO 3 ///< GPIO number for PWM signal
-#define PWM_REV_GPIO 8 ///< GPIO number for PWM reverse signal
-#define PWM_FREQ 50 ///< PWM frequency in Hz
-#define PWM_RESOLUTION 100000 ///< PWM resolution in bits
-#define MAX_PWM_CAL 120 ///< Maximum PWM value
-#define MIN_PWM_CAL 35 ///< Minimum PWM value
-#define MAX_PWM_RE 119 ///< Maximum PWM value (moves fully)
-#define MIN_PWM_RE 38 ///< Minimum PWM value (does not move)
+#define PWM_GPIO 3                  ///< GPIO number for PWM signal
+#define PWM_REV_GPIO 8              ///< GPIO number for PWM reverse signal
+#define PWM_FREQ 50                 ///< PWM frequency in Hz
+#define PWM_RESOLUTION 100000       ///< PWM resolution in bits
+#define MAX_PWM_CAL 120             ///< Maximum PWM value
+#define MIN_PWM_CAL 35              ///< Minimum PWM value
+#define MAX_PWM_RE 119              ///< Maximum PWM value (moves fully)
+#define MIN_PWM_RE 38               ///< Minimum PWM value (does not move)
 ///<--------------------------------------------------
 
 #if MAIN_MODE == 0
+
+// configuration of motors
 bldc_pwm_motor_t pwm, pwm2;
 
+// object to control the magnetic rotary encoder
 AS5600_t gAs5600;
-//vl53l1x_t gVl53l1x;
+
+// Object to control the 
+vl53l1x_t gVl53l1x;
+
+// object to control the TM151
+uart_t myUART;                  ///< UART object
+
 
 float angle; ///< Angle read from the AS5600 sensor
 
@@ -95,8 +145,9 @@ void app_main(void)
     AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
     ///<--------------------------------------------------
 
+
     ///<-------------- Initialize the VL53L1X sensor -----
-    /*if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
         ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
         return;
     }
@@ -104,8 +155,20 @@ void app_main(void)
     VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
     VL53L1X_startContinuous(&gVl53l1x, 30);
     ///<--------------------------------------------------
-    */
+    
 
+    ///<-------------- Initialize the TM151 sensor ------
+    if (!myUART.init_with_defaults(&myUART, 115200, 1024, UART_TX, UART_RX) ) {
+        ESP_LOGI(TAG_TM151, "Could not initialize  TM151 sensor... ");
+        return;
+    }
+    ESP_LOGI(TAG_TM151, "TM151 initialized! ");
+
+    // Initialize the TM151 interface
+    
+    EasyProfile_C_Interface_Init();
+
+    ///<--------------------------------------------------
 
     ///<----------- Initialize the BLDC motor PWM --------
     // ESP_LOGI("PWM", "Starting test..."); ///< Log message
@@ -119,14 +182,14 @@ void app_main(void)
     int16_t duty = 0; ///< Duty cycle variable
     bool reverse = false; ///< Reverse variable
     float last_angle = 0;
+
+
     for (uint16_t i = 0; i < 500; i++)
     {
         // ESP_LOGI("PWM", "ESC running!"); ///< Log message
 
         ///<-------------- Get angle through ADC -------------
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
-        // ESP_LOGI("Encoder_ADC", "Angle: %f", angle); ///< Log message
-        // vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 10 miliseconds
         ///<--------------------------------------------------
 
         if(i){
@@ -138,7 +201,21 @@ void app_main(void)
         }
 
         ///<-------------- Get distance through VL53L1X ------
-        /* ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); */
+        ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); */
+        ///<--------------------------------------------------
+
+
+        ///<-------------- Get data from TM151 --------------
+        uint16_t toId = EP_ID_BROADCAST_;
+        char* txData;
+        int txSize;
+
+        if (EP_SUCC_ == EasyProfile_C_Interface_TX_Request(toId, EP_CMD_RPY_, &txData, &txSize)) {
+            uart_write(&myUART, (uint8_t*)txData, (size_t)txSize);
+        } 
+
+        SerialPort_DataGet(&myUART);
+
         ///<--------------------------------------------------
 
         // if (abs(duty) > 50) ///< If the duty cycle is greater than 100%
