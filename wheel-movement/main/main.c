@@ -184,7 +184,7 @@ void app_main(void)
     float last_angle = 0;
 
 
-    for (uint16_t i = 0; i < 500; i++)
+    while (true)
     {
         // ESP_LOGI("PWM", "ESC running!"); ///< Log message
 
@@ -192,13 +192,12 @@ void app_main(void)
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
         ///<--------------------------------------------------
 
-        if(i){
             float diff = angle - last_angle;
             if(diff < 0) diff += 360;
 
             ESP_LOGI("Encoder_PWM", "Angle: %f, RPM: %f", angle, diff* (float)(100 / 6)); ///< Log message
             last_angle = angle;
-        }
+        
 
         ///<-------------- Get distance through VL53L1X ------
         ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1)); 
