@@ -45,6 +45,8 @@
 #include <esp_log.h>
 #include <esp_err.h>
 
+#define TAG_PID "PID" ///< Tag for logging PID messages
+
 typedef struct {
     
     float Kp;   // Proportional gain
@@ -56,7 +58,7 @@ typedef struct {
     
     float previous_error; // Previous error for derivative calculation
 
-    float control;         // Output value
+    int16_t control;         // Output value
 } PIDController;
 
 

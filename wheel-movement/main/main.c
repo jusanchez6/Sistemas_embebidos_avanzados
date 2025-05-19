@@ -44,18 +44,19 @@
 // Include personalized sensors libraries
 #include "as5600_lib.h"
 #include "VL53L1X.h"
-#include "EasyObjectDictionary.h"
-#include "EasyProfile.h"
 #include "EasyRetrieve.h"
-#include "bldc_pwm.h"
 
+// Include personalized driver libraries
+#include "bldc_pwm.h"
+#include "pid.h"
 
 // Include ESP IDF libraries
 #include <assert.h>
 #include "freertos/task.h"
+#include "freertos/queue.h"
+#include "driver/gptimer.h"
 
-
-
+#define SAMPLE_TIME 10 ///< Sample time in ms
 
 ///<---------- Main mode: ------------------------
 #define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration
@@ -78,9 +79,9 @@
 ///<--------------------------------------------------
 
 ///<------------- VL53L1X configuration --------------
-#define VL53L1X_I2C_PORT 0      ///< I2C port number for master dev
-#define VL53L1X_SDA_GPIO 21     ///< gpio number for I2C master data 
-#define VL53L1X_SCL_GPIO 20     ///< gpio number for I2C mastes clock
+#define VL53L1X_I2C_PORT 1      ///< I2C port number for master dev
+#define VL53L1X_SDA_GPIO 16     ///< gpio number for I2C master data 
+#define VL53L1X_SCL_GPIO 15     ///< gpio number for I2C mastes clock
 ///<--------------------------------------------------
 
 ///<-------------- BLDC configuration -----------------
@@ -96,71 +97,82 @@
 
 #if MAIN_MODE == 0
 
-// configuration of motors
-// bldc_pwm_motor_t pwm, pwm2;
+typedef struct {
+    float AS5600_angle;
+    uint16_t VL53L1X_distance;
+    float TM151_acceleration[3];
+} alarm_event_t;
 
-// object to control the magnetic rotary encoder
-// AS5600_t gAs5600;
+/*
+ * @brief Task to control the wheel
+ */
+void vTaskControl( void * pvParameters );
 
-// Object to control the 
-// vl53l1x_t gVl53l1x;
+/*
+ * @brief Callback function for the timer to retrieve the data from the sensors
+ */
+static bool IRAM_ATTR ret_sensor_data_alarm(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data);
 
-// object to control the TM151
-uart_t myUART;                  ///< UART object
+bldc_pwm_motor_t pwm; ///< BLDC motor object
+AS5600_t gAs5600;     ///< AS5600 object for angle sensor
+vl53l1x_t gVl53l1x;   ///< VL53L1X object for distance sensor
+uart_t myUART;        ///< UART object for TM151 IMU
+PIDController pid;    ///< PID controller object
+float angle;          ///< Angle read from the AS5600 sensor
 
-
-// float angle; ///< Angle read from the AS5600 sensor
+alarm_event_t evt; ///< Event data for the timer
 
 void app_main(void)
 {
     ///<------------- Initialize the AS5600 sensor -------
-    // AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
+    AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
 
-    // // Set some configurations to the AS5600
-    // AS5600_config_t conf = {
-    //     .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
-    //     .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
-    //     .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
-    //     .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
-    //     .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
-    //     .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
-    //     .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
-    // };
-    // AS5600_SetConf(&gAs5600, conf);
+    // Set some configurations to the AS5600
+    AS5600_config_t conf = {
+        .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
+        .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
+        .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
+        .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
+        .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
+        .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
+        .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+    };
+    AS5600_SetConf(&gAs5600, conf);
     
-    // // Read the configuration
-    // uint16_t conf_reg;
-    // AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
-    // printf("Configuration register read: 0x%04X\n", conf_reg);
-    // printf("Configuration register written: 0x%04X\n", conf.WORD);
+    // Read the configuration
+    uint16_t conf_reg;
+    AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
+    printf("Configuration register read: 0x%04X\n", conf_reg);
+    printf("Configuration register written: 0x%04X\n", conf.WORD);
 
-    // AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg);
+    AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg);
 
-    // printf("Status register read: 0x%02X\n", conf_reg);
+    printf("Status register read: 0x%02X\n", conf_reg);
 
-    // AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0
-    // AS5600_SetStopPosition(&gAs5600, 4095); ///< Set the stop position to 4095
+    AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0
+    AS5600_SetStopPosition(&gAs5600, 0); ///< Set the stop position to 4095
 
-    // AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
+    AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
+    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
 
 
     ///<-------------- Initialize the VL53L1X sensor -----
-    // if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
-    //     ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
-    //     return;
-    // }
-    // VL53L1X_setDistanceMode(&gVl53l1x, Short); 
-    // VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
-    // VL53L1X_startContinuous(&gVl53l1x, 30);
+    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+        ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
+        return;
+    }
+    VL53L1X_setDistanceMode(&gVl53l1x, Short); 
+    VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
+    VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
+    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
     
 
     ///<-------------- Initialize the TM151 sensor ------
-    tm151_init(&myUART, TM151_UART_BAUDRATE, TM151_BUFFER_SIZE, TM151_UART_TX, TM151_UART_RX); ///< Initialize the TM151 sensor
+    // tm151_init(&myUART, TM151_UART_BAUDRATE, TM151_BUFFER_SIZE, TM151_UART_TX, TM151_UART_RX); ///< Initialize the TM151 sensor
 
-    float acceleration[3];
-
+    // float acceleration[3];
     ///<--------------------------------------------------
 
     ///<----------- Initialize the BLDC motor PWM --------
@@ -170,11 +182,69 @@ void app_main(void)
     // bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
     ///<--------------------------------------------------
 
-    // vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Wait for 15 seconds    
+    vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
 
-    // int16_t duty = 0; ///< Duty cycle variable
-    // bool reverse = false; ///< Reverse variable
-    // float last_angle = 0;
+    ///<-------------- Initialize the PID controller ------
+    if (PID_Init(&pid, 0.1, 0.01, 0.1) != ESP_OK)///< Initialize the PID controller
+    {
+        ESP_LOGE(TAG_PID, "Could not initialize PID controller...");
+        return;
+    }
+    ///<---------------------------------------------------
+
+    ///<-------------- Initialize the timer ---------------
+    // Config the timer
+    gptimer_handle_t gptimer = NULL;
+    gptimer_config_t config = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = 1000000,   // 1 MHz - 1 microsegundo por tick
+    };
+
+    ESP_ERROR_CHECK(gptimer_new_timer(&config, &gptimer));
+
+    // Config the callback
+    gptimer_event_callbacks_t cbs = {
+        .on_alarm = ret_sensor_data_alarm,
+    };
+
+    // Create a queue to send the event data
+    QueueHandle_t queue = xQueueCreate(10, sizeof(alarm_event_t));
+    if (queue == NULL) {
+        ESP_LOGE("QUEUE_ALRM", "Failed to create queue...");
+        return;
+    }
+    ESP_LOGI("QUEUE_ALRM", "Queue created successfully!");
+
+    ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, queue));
+    ESP_ERROR_CHECK(gptimer_enable(gptimer));
+
+    // Config alarm with SAMPLE_TIME milliseconds period and auto-reload
+    gptimer_alarm_config_t alarm_config = {
+        .alarm_count = SAMPLE_TIME * 1000, // Shoot every SAMPLE_TIME milliseconds
+        .reload_count = 0,                 // Reload count
+        .flags.auto_reload_on_alarm = true,
+    };
+    ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
+
+    // Initialize the timer
+    ESP_ERROR_CHECK(gptimer_start(gptimer));
+    ESP_LOGI("CTRL_ALRM", "Timer inited successfully!");
+    ///<--------------------------------------------------
+
+    ///<-------------- Create the task ---------------
+    TaskHandle_t xTaskControlHandle = NULL;
+    xTaskCreate(vTaskControl, "vTaskControl", 2048, queue, 10, &xTaskControlHandle); ///< Create the task to control the wheel
+    configASSERT(xTaskControlHandle); ///< Check if the task was created successfully
+    if (xTaskControlHandle == NULL) {
+        ESP_LOGE("CTRL_TASK", "Failed to create task...");
+        return;
+    }
+    ///<--------------------------------------------------
+
+    int16_t duty = 0; ///< Duty cycle variable
+    bool reverse = false; ///< Reverse variable
+    float last_angle = 0;
 
 
     while (1)
@@ -183,63 +253,81 @@ void app_main(void)
 
         ///<-------------- Get angle through ADC -------------
         // angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
+        // ESP_LOGI(TAG_ADC, "Angle: %0.2f\n", angle); ///< Log message
+        // ///<--------------------------------------------------
+
+        // ///<-------------- Get distance through VL53L1X ------
+        // ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 0));
         ///<--------------------------------------------------
-
-        // if(i){
-        //     float diff = angle - last_angle;
-        //     if(diff < 0) diff += 360;
-
-        //     ESP_LOGI("Encoder_PWM", "Angle: %f, RPM: %f", angle, diff* (float)(100 / 6)); ///< Log message
-        //     last_angle = angle;
-        // }
-
-        ///<-------------- Get distance through VL53L1X ------
-        // ESP_LOGI(TAG_VL53L1X, "Distance %d mm", VL53L1X_readDistance(&gVl53l1x, 1));
-        ///<--------------------------------------------------
-
 
         ///<-------------- Get data from TM151 --------------
-        // uint16_t toId = EP_ID_BROADCAST_;
-        // char* txData;
-        // int txSize;
-
-        // if (EP_SUCC_ == EasyProfile_C_Interface_TX_Request(EP_ID_BROADCAST_, EP_CMD_Raw_GYRO_ACC_MAG_, &txData, &txSize)) {
-        //     uart_write(&myUART, (uint8_t*)txData, (size_t)txSize);
-        // } 
-
-        // SerialPort_DataGet(&myUART);
-        SerialPort_DataReceived_RawAcc(&myUART, acceleration);
-        ESP_LOGI(TAG_TM151, "Acceleration: %0.4f %0.4f %0.4f", acceleration[0], acceleration[1], acceleration[2]); ///< Log message
-
+        // SerialPort_DataReceived_RawAcc(&myUART, acceleration);
+        // ESP_LOGI(TAG_TM151, "Acceleration: %0.4f %0.4f %0.4f", acceleration[0], acceleration[1], acceleration[2]); ///< Log message
         ///<--------------------------------------------------
 
-        // if (abs(duty) > 50) ///< If the duty cycle is greater than 100%
-        // {
-        //     if(reverse) duty = -1; ///< Set the duty cycle to 0%
-        //     else duty = 1; ///< Set the duty cycle to 0%
-        //     reverse = !reverse; ///< Reverse the direction
-        //     bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
-        //     vTaskDelay(1000 / portTICK_PERIOD_MS); ///< Wait for 5 seconds
-        // }
-        // if (reverse) { ///< If the direction is reversed
-        //     duty -= 2; ///< Increase the reverse duty cycle
-        //     // ESP_LOGI("PWM", "Motor running in reverse! PWM: %hd.", duty); ///< Log message
-        //     bldc_set_duty(&pwm, duty); ///< Set the duty cycle to 0%
-        // } else {
-        //     duty += 2; ///< Increase the forward duty cycle
-        //     // ESP_LOGI("PWM", "Motor running in forward! PWM: %hd.", duty); ///< Log message
-        //     bldc_set_duty(&pwm, duty); ///< Set the duty cycle to the current PWM value
-        // }
+        ///<-------------- PID Control ---------------
+        // PID_Compute(&pid, /*Velocity estimation*/, SAMPLE_TIME / 1000.0f); ///< Compute the PID control
+        // bldc_set_duty(&pwm, pid.control); ///< Set the duty cycle to target
+        ///<------------------------------------------
 
-        // bldc_set_duty(&pwm, 80); ///< Set the duty cycle to the current PWM value
-
-        vTaskDelay(5 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
+        // vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 seconds
     }
-
-    // bldc_set_duty(&pwm, 0); ///< Set the duty cycle to the current PWM value
-
 }
+
 #endif
+
+// Task to control the wheel
+void vTaskControl( void * pvParameters ){
+    QueueHandle_t queue = (QueueHandle_t) pvParameters;
+    while(1){
+        if (xQueueReceive(queue, &evt, pdMS_TO_TICKS(500))) {
+            ///<----------------- Act to angle -------------------
+            ESP_LOGI(TAG_ADC, "Angle: %0.2f\n", evt.AS5600_angle); ///< Log message
+            ///<--------------------------------------------------
+
+            ///<------------------ Act to distance ---------------
+            ESP_LOGI(TAG_VL53L1X, "Distance %d mm", evt.VL53L1X_distance);
+            ///<--------------------------------------------------
+
+            ///<-------------- Act to acceleration ---------------
+            // ESP_LOGI(TAG_TM151, "Acceleration: %0.4f %0.4f %0.4f", evt.acceleration[0], evt.acceleration[1], evt.acceleration[2]); ///< Log message
+            ///<--------------------------------------------------
+
+            ///<-------------- PID Control ---------------
+            // PID_Compute(&pid, /*Velocity estimation*/, SAMPLE_TIME / 1000.0f); ///< Compute the PID control
+            // bldc_set_duty(&pwm, pid.control); ///< Set the duty cycle to target
+            ///<------------------------------------------
+        }
+    }
+}
+
+// Alarm callback function for wheel control
+static bool IRAM_ATTR ret_sensor_data_alarm(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
+{
+    BaseType_t high_task_awoken = pdFALSE;
+    QueueHandle_t queue = (QueueHandle_t)user_data;
+
+    ESP_LOGI("ALRM", "Getting sensors info\n");
+    alarm_event_t evt = {
+
+        ///<-------------- Get angle through ADC -------------
+        .AS5600_angle = AS5600_ADC_GetAngle(&gAs5600), ///< Get the angle from the ADC
+        ///<--------------------------------------------------
+
+        ///<-------------- Get distance through VL53L1X ------
+        .VL53L1X_distance = VL53L1X_readDistance(&gVl53l1x, 0)
+        ///<--------------------------------------------------
+
+        ///<-------------- Get data from TM151 --------------
+        // SerialPort_DataReceived_RawAcc(&myUART, acceleration);
+        ///<--------------------------------------------------
+
+    };
+
+    xQueueSendFromISR(queue, &evt, &high_task_awoken);
+
+    return high_task_awoken == pdTRUE;
+}
 
 #if MAIN_MODE == 1
 
