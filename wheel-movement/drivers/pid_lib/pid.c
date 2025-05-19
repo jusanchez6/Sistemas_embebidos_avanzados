@@ -1,5 +1,5 @@
 /**
- * @file pid.h
+ * @file pid.c
  * 
  * @brief Simple pid implementation file
  * 
@@ -56,7 +56,7 @@ esp_err_t PID_Init(PIDController *pid, float Kp, float Ki, float Kd) {
     pid->previous_error = 0.0f;
     
     // Initialize control output
-    pid->control = 0.0f;
+    pid->control = 0;
 
     return ESP_OK;
 }
@@ -85,7 +85,7 @@ esp_err_t PID_Compute(PIDController *pid, float measured_value, float dt) {
     // Save current error for next iteration
     pid->previous_error = error;
 
-    pid->control = Pout + Iout + Dout;
+    pid->control = (int16_t)(Pout + Iout + Dout);
     
     return ESP_OK;
 }

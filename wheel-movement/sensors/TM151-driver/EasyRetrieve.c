@@ -1,5 +1,19 @@
 #include "EasyRetrieve.h"
 
+void tm151_init(uart_t *myUART, uint32_t baudrate, uint32_t buffer_size, uint8_t tx_pin, uint8_t rx_pin) {
+    ESP_LOGI(TAG_TM151, "Initializing TM151 sensor... ");
+    if (uart_init_with_defaults(myUART, baudrate, buffer_size, tx_pin, rx_pin) ) {
+        ESP_LOGI(TAG_TM151, "Could not initialize  TM151 sensor... ");
+        return;
+    }
+    ESP_LOGI(TAG_TM151, "TM151 initialized! ");
+
+    // Initialize the TM151 interface
+    
+    EasyProfile_C_Interface_Init();
+    SerialPort_DataGet_RawAcc(myUART);
+}
+
 void SerialPort_DataGet(uart_t* myUART){
 
 	char* rxData[10]; 
@@ -10,7 +24,7 @@ void SerialPort_DataGet(uart_t* myUART){
 	Ep_Header header; // Then let the EasyProfile do the rest such as data assembling and checksum verification.
     if( EP_SUCC_ == EasyProfile_C_Interface_RX((char*)rxData, (int)rxSize, &header)){
 
-        ESP_LOGI("EasyProfile", "RX header CMD: %d", header.cmd);
+        // ESP_LOGI("EasyProfile", "RX header CMD: %d", header.cmd);
         
         switch (header.cmd) { // The program will only reach this line if and only if a correct and complete package has received.
         case EP_CMD_ACK_:{
@@ -94,6 +108,47 @@ void SerialPort_DataGet(uart_t* myUART){
         case EP_CMD_GRAVITY_:{
 
         }break;
+        }
+    }
+}
+
+void SerialPort_DataGet_RawAcc(uart_t* myUART){
+
+    char* txData;
+    int txSize;
+
+    if (EP_SUCC_ == EasyProfile_C_Interface_TX_Request(EP_ID_BROADCAST_, EP_CMD_Raw_GYRO_ACC_MAG_, &txData, &txSize)) {
+        uart_write(myUART, (uint8_t*)txData, (size_t)txSize);
+    } 
+        // switch (header.cmd) { // The program will only reach this line if and only if a correct and complete package has received.
+        
+        // case EP_CMD_Raw_GYRO_ACC_MAG_:{              // Here we demonstrate a few examples on how to use the received data
+        //     // Raw Data received
+        //     unsigned int timeStamp = ep_Raw_GyroAccMag.timeStamp;
+        //     rawAcc = ep_Raw_GyroAccMag.acc;     // Note 1: ep_Raw_GyroAccMag is defined in the EasyProfile library as a global variable
+        // }break;
+        // }
+}
+
+void SerialPort_DataReceived_RawAcc(uart_t* myUART, float* rawAcc) {
+    // This function is called when new serial data is received
+    // You can process the received data here
+    // For example, you can call SerialPort_DataGet() to handle the data
+    char* rxData[10]; 
+	int   rxSize=10;
+    
+    uart_read(myUART, (uint8_t*)rxData, (size_t)rxSize, 10); // Read the data from UART
+
+	Ep_Header header; // Then let the EasyProfile do the rest such as data assembling and checksum verification.
+    if( EP_SUCC_ == EasyProfile_C_Interface_RX((char*)rxData, (int)rxSize, &header)){
+
+        // ESP_LOGI("EasyProfile", "RX header CMD: %d", header.cmd);
+        if (header.cmd == EP_CMD_Raw_GYRO_ACC_MAG_) {
+            unsigned int timeStamp = ep_Raw_GyroAccMag.timeStamp;
+            // Copy the accelerometer data to the memory pointed to by rawAcc
+            rawAcc[0] = ep_Raw_GyroAccMag.acc[0];
+            rawAcc[1] = ep_Raw_GyroAccMag.acc[1];
+            rawAcc[2] = ep_Raw_GyroAccMag.acc[2];
         }
     }
 }
