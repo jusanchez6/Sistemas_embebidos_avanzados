@@ -85,7 +85,13 @@ esp_err_t PID_Compute(PIDController *pid, float measured_value, float dt) {
     // Save current error for next iteration
     pid->previous_error = error;
 
-    pid->control = (int16_t)(Pout + Iout + Dout);
+    if((int16_t)(Pout + Iout + Dout) < -100) {
+        pid->control = -100;
+    } else if((int16_t)(Pout + Iout + Dout) > 100) {
+        pid->control = 100;
+    } else {
+        pid->control = (int16_t)(Pout + Iout + Dout);
+    }
     
     return ESP_OK;
 }
