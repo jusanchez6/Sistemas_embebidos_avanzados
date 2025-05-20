@@ -49,6 +49,7 @@
 // Include personalized driver libraries
 #include "bldc_pwm.h"
 #include "pid.h"
+#include "sensor_fusion.h"
 
 // Include ESP IDF libraries
 #include <assert.h>
@@ -73,9 +74,8 @@
 ///<------------- TM151 configuration ----------------
 #define TM151_UART_TX 17                          ///< Gpio pin for UART TX
 #define TM151_UART_RX 18                          ///< GPIO pin for UART RX
-#define TM151_UART_BAUDRATE 921600                ///< Baudrate for UART communication
+#define TM151_UART_BAUDRATE 115600                ///< Baudrate for UART communication
 #define TM151_BUFFER_SIZE 1024                       ///< Buffer size for UART communication
-
 ///<--------------------------------------------------
 
 ///<------------- VL53L1X configuration --------------
@@ -117,7 +117,7 @@ bldc_pwm_motor_t pwm; ///< BLDC motor object
 AS5600_t gAs5600;     ///< AS5600 object for angle sensor
 vl53l1x_t gVl53l1x;   ///< VL53L1X object for distance sensor
 uart_t myUART;        ///< UART object for TM151 IMU
-PIDController pid;    ///< PID controller object
+// PIDController pid;    ///< PID controller object
 float angle;          ///< Angle read from the AS5600 sensor
 
 /*
@@ -165,48 +165,57 @@ float angle;          ///< Angle read from the AS5600 sensor
 
 void app_main(void)
 {
+    ///<----------- Initialize the BLDC motor PWM --------
+    // ESP_LOGI("PWM", "Starting test..."); ///< Log message
+    // bldc_init(&pwm, PWM_GPIO, PWM_REV_GPIO, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
+    // bldc_enable(&pwm); ///< Enable the BLDC motor
+    // bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
+    ///<--------------------------------------------------
+
+    vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
+
     ///<------------- Initialize the AS5600 sensor -------
-    AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
+    // AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
 
-    // Set some configurations to the AS5600
-    AS5600_config_t conf = {
-        .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
-        .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
-        .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
-        .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
-        .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
-        .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
-        .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
-    };
-    AS5600_SetConf(&gAs5600, conf);
+    // // Set some configurations to the AS5600
+    // AS5600_config_t conf = {
+    //     .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
+    //     .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
+    //     .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
+    //     .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
+    //     .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
+    //     .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
+    //     .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+    // };
+    // AS5600_SetConf(&gAs5600, conf);
     
-    // Read the configuration
-    uint16_t conf_reg;
-    AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
-    printf("Configuration register read: 0x%04X\n", conf_reg);
-    printf("Configuration register written: 0x%04X\n", conf.WORD);
+    // // Read the configuration
+    // uint16_t conf_reg;
+    // AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
+    // printf("Configuration register read: 0x%04X\n", conf_reg);
+    // printf("Configuration register written: 0x%04X\n", conf.WORD);
 
-    AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg);
+    // AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg);
 
-    printf("Status register read: 0x%02X\n", conf_reg);
+    // printf("Status register read: 0x%02X\n", conf_reg);
 
-    AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0
-    AS5600_SetStopPosition(&gAs5600, 2000); ///< Set the stop position to 4095
+    // AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0
+    // AS5600_SetStopPosition(&gAs5600, 2000); ///< Set the stop position to 4095
 
-    AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
-    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
+    // AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
+    // vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
 
 
     ///<-------------- Initialize the VL53L1X sensor -----
-    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
-        ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
-        return;
-    }
-    VL53L1X_setDistanceMode(&gVl53l1x, Short); 
-    VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
-    VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
-    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
+    // if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+    //     ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
+    //     return;
+    // }
+    // VL53L1X_setDistanceMode(&gVl53l1x, Short); 
+    // VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
+    // VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
+    // vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
     
 
@@ -214,24 +223,18 @@ void app_main(void)
     tm151_init(&myUART, TM151_UART_BAUDRATE, TM151_BUFFER_SIZE, TM151_UART_TX, TM151_UART_RX); ///< Initialize the TM151 sensor
 
     float acceleration[3];
+    imu_data_t imu_data;
+    imu_data.velocity = 0.0f; ///< Initialize the velocity to 0
+    imu_data.prev_acc = 0.0f; ///< Initialize the previous acceleration to 0
     ///<--------------------------------------------------
-
-    ///<----------- Initialize the BLDC motor PWM --------
-    ESP_LOGI("PWM", "Starting test..."); ///< Log message
-    bldc_init(&pwm, PWM_GPIO, PWM_REV_GPIO, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
-    bldc_enable(&pwm); ///< Enable the BLDC motor
-    bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
-    ///<--------------------------------------------------
-
-    vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
 
     ///<-------------- Initialize the PID controller ------
-    if (PID_Init(&pid, 1.66, 0.6, /*1.8*/0.05) != ESP_OK)///< Initialize the PID controller
-    {
-        ESP_LOGE(TAG_PID, "Could not initialize PID controller...");
-        return;
-    }
-    PID_SetSetpoint(&pid, 2); ///< Set the setpoint to 0
+    // if (PID_Init(&pid, 1.66, 0.6, /*1.8*/0.05) != ESP_OK)///< Initialize the PID controller
+    // {
+    //     ESP_LOGE(TAG_PID, "Could not initialize PID controller...");
+    //     return;
+    // }
+    // PID_SetSetpoint(&pid, 2); ///< Set the setpoint to 0
     ///<---------------------------------------------------
 
     ///<-------------- Initialize the timer ---------------
@@ -295,25 +298,18 @@ void app_main(void)
     // }
     ///<--------------------------------------------------
 
-    int16_t duty = 0; ///< Duty cycle variable
-    bool reverse = false; ///< Reverse variable
-    float last_angle = 0;
-    uint16_t distance = 0, last_distance = 0; ///< Distance variables
-    float velocity_lidar = 0; ///< Velocity variable
-
-
     while (1)
     {
         // if (xQueueReceive(queue, &evt, pdMS_TO_TICKS(2000))) {
         //     ESP_LOGI("TAG", "Angle: %f", evt.AS5600_angle);
         // }
         // ESP_LOGI("PWM", "ESC running!"); ///< Log message
-        distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
+        // distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
 
-        if(distance <= 20 && distance != 0) { ///< If the distance is less than 20 cm
-            ESP_LOGI(TAG_VL53L1X, "Distance %d mm. PWM: %hd", distance, 0);
-            bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
-        } else {
+        // if(distance <= 20 && distance != 0) { ///< If the distance is less than 20 cm
+        //     ESP_LOGI(TAG_VL53L1X, "Distance %d mm. PWM: %hd", distance, 0);
+        //     bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
+        // } else {
 
             ///<-------------- Get angle through ADC -------------
             // angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
@@ -321,30 +317,33 @@ void app_main(void)
             // ///<--------------------------------------------------
 
             // ///<-------------- Get distance through VL53L1X ------
-            if(abs(distance - last_distance) > 10){
-                velocity_lidar = 100.0 * (float)(last_distance - distance)  / (float)(SAMPLE_TIME); ///< Calculate the velocity cm/s
-            }
-            else{
-                velocity_lidar = 0;
-            }
-            // velocity_lidar = 100.0 * (float)(distance - last_distance)  / (float)(SAMPLE_TIME); ///< Calculate the velocity cm/s
-            last_distance = distance; ///< Update the last distance
+            // if(abs(distance - last_distance) > 10){
+            //     velocity_lidar = 100.0 * (float)(last_distance - distance)  / (float)(SAMPLE_TIME); ///< Calculate the velocity cm/s
+            // }
+            // else{
+            //     velocity_lidar = 0;
+            // }
+            // // velocity_lidar = 100.0 * (float)(distance - last_distance)  / (float)(SAMPLE_TIME); ///< Calculate the velocity cm/s
+            // last_distance = distance; ///< Update the last distance
             ///<--------------------------------------------------
 
             ///<-------------- Get data from TM151 --------------
-            // SerialPort_DataReceived_RawAcc(&myUART, acceleration);
-            // ESP_LOGI(TAG_TM151, "Acceleration: %0.4f %0.4f %0.4f", acceleration[0], acceleration[1], acceleration[2]); ///< Log message
+            SerialPort_DataReceived_RawAcc(&myUART, acceleration);
+            // printf("Acceleration: %0.4f %0.4f %0.4f\n", acceleration[0], acceleration[1], acceleration[2]); ///< Log message
+            float acc_2dp = (int)(acceleration[0] * 10);
+            estimate_velocity_imu(&imu_data, (float)acc_2dp / 10.0, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using IMU data
+            printf("Velocity: %0.4f cm/s, with time interval %.2f seconds\n", imu_data.velocity, SAMPLE_TIME / 1000.0f); ///< Log message
             ///<--------------------------------------------------
 
             ///<-------------- PID Control ---------------
-            PID_Compute(&pid, velocity_lidar, SAMPLE_TIME / 1000.0f); ///< Compute the PID control
-            bldc_set_duty(&pwm, pid.control); ///< Set the duty cycle to target
+            // PID_Compute(&pid, velocity_lidar, SAMPLE_TIME / 1000.0f); ///< Compute the PID control
+            // bldc_set_duty(&pwm, pid.control); ///< Set the duty cycle to target
             ///<------------------------------------------
 
-            ESP_LOGI(TAG_VL53L1X, "Distance %d mm. Velocity: %.2f. PWM: %hd", distance, velocity_lidar, pid.control); ///< Log message
-        }
+            // ESP_LOGI(TAG_VL53L1X, "Distance %d mm. Velocity: %.2f. PWM: %hd", distance, velocity_lidar, pid.control); ///< Log message
+        // }
 
-        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 seconds
+        vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
     }
 }
 
