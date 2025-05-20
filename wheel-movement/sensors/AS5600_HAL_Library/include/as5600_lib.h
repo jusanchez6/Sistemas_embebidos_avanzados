@@ -37,7 +37,10 @@
 #define ADC_TO_VOLTAGE(val) MAP(val, 0, AS5600_ADC_RESOLUTION_12_BIT, 0, VCC_3V3_MV) /*!< ADC to voltage conversion */
 #define LIMIT(a, min, max) (a < min ? min : (a > max ? max : a)) /*!< Limit a value between min and max */
 
-#define I2C_MASTER_FREQ_HZ  400*1000    /*!< I2C master clock frequency */
+#ifndef I2C_MASTER_FREQ_HZ
+    #define I2C_MASTER_FREQ_HZ  400*1000    /*!< I2C master clock frequency */
+#endif
+
 #define AS5600_SENSOR_ADDR  0x36        /*!< slave address for AS5600 sensor */
 
 typedef struct

@@ -59,7 +59,7 @@
 #define SAMPLE_TIME 10 ///< Sample time in ms
 
 ///<---------- Main mode: ------------------------
-#define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration
+#define MAIN_MODE 3 ///< 0 = No Calibration, 1 = ESC Calibration, 2 AS5600 PROBE
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
@@ -273,9 +273,6 @@ void app_main(void)
         // vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 seconds
     }
 }
-
-#endif
-
 // Task to control the wheel
 void vTaskControl( void * pvParameters ){
     QueueHandle_t queue = (QueueHandle_t) pvParameters;
@@ -328,6 +325,9 @@ static bool IRAM_ATTR ret_sensor_data_alarm(gptimer_handle_t timer, const gptime
 
     return high_task_awoken == pdTRUE;
 }
+
+#endif
+
 
 #if MAIN_MODE == 1
 
@@ -385,4 +385,69 @@ void app_main(void)
     }
     
 }
+#endif
+
+
+#if MAIN_MODE == 3
+
+const char *TAG = "AS5600";
+AS5600_t gAs5600;     ///< AS5600 object for angle sensor
+
+
+
+void app_main(void)
+{
+
+    ///< ---------------------- AS5600 -------------------
+    AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
+
+    
+    // Set some configurations to the AS5600
+    AS5600_config_t conf = {
+        .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
+        .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
+        .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
+        .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
+        .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
+        .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
+        .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+    };
+    AS5600_SetConf(&gAs5600, conf);
+    
+
+    ESP_LOGI(TAG, "Configuration: 0x%04X", conf.WORD); ///< Read the configuration register
+    
+    // Read the configuration
+    uint16_t conf_reg;
+    AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
+
+    
+    if (conf_reg != conf.WORD)
+    {
+        ESP_LOGE(TAG, "Configuration error: 0x%04X", conf_reg); ///< Configuration error
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Configuration OK"); ///< Configuration OK
+    }
+    
+    vTaskDelay(10000 / portTICK_PERIOD_MS); ///< Delay 1 second
+    // calibration:
+
+    AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0 degrees
+    AS5600_SetStopPosition(&gAs5600, 4095); ///< Set the end position to 360 degrees
+    AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
+
+    vTaskDelay(10000 / portTICK_PERIOD_MS); ///< Delay 1 second
+    
+    while (true)
+    {
+        ESP_LOGI(TAG, "AS5600 angle: %0.2f", AS5600_ADC_GetAngle(&gAs5600)); ///< Get the angle from the ADC
+        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Delay 1 second
+    }
+    
+}
+
+
+
 #endif
