@@ -64,8 +64,8 @@
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
-#define AS5600_I2C_MASTER_SCL_GPIO 4    ///< gpio number for I2C master clock
-#define AS5600_I2C_MASTER_SDA_GPIO 5    ///< gpio number for I2C master data 
+#define AS5600_I2C_MASTER_SCL_GPIO 5    ///< gpio number for I2C master clock
+#define AS5600_I2C_MASTER_SDA_GPIO 4    ///< gpio number for I2C master data 
 #define AS5600_OUT_GPIO 6               ///< gpio number for OUT signal
 #define AS5600_I2C_MASTER_NUM 0         ///< I2C port number for master dev
 #define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
@@ -112,7 +112,8 @@ vl53l1x_t gVl53l1x;   ///< VL53L1X object for distance sensor
 uart_t myUART;        ///< UART object for TM151 IMU
 float angle;          ///< Angle read from the AS5600 sensor
 uint16_t distance, goal_distance;     ///< Distance read from the VL53L1X sensor
-bool reached_goal = true, start_new_task = false; ///< Flag to indicate if the goal distance is reached
+bool reached_goal = true, start_new_task = false, move_one_time = false; ///< Flag to indicate if the goal distance is reached
+int16_t duty;
 
 static volatile pid_block_handle_t pid; // PID control block handle
 
@@ -148,6 +149,19 @@ void uart_task(void * pvParameters);
 
 void app_main(void)
 {
+
+    ///<-------------- Initialize the VL53L1X sensor -----
+    // if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+    //     ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
+    //     return;
+    // }
+    // VL53L1X_setDistanceMode(&gVl53l1x, Short); 
+    // VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
+    // VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
+    // vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
+    ///<--------------------------------------------------
+
+
     ///<----------- Initialize the BLDC motor PWM --------
     ESP_LOGI("PWM", "Starting test..."); ///< Log message
     bldc_init(&pwm, PWM_GPIO, PWM_REV_GPIO, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
@@ -182,22 +196,10 @@ void app_main(void)
 
     printf("Status register read: 0x%02X\n", conf_reg);
 
-    AS5600_SetStartPosition(&gAs5600, 0x00); ///< Set the start position to 0
-    AS5600_SetStopPosition(&gAs5600, 0xFF); ///< Set the stop position to 4095
+    AS5600_SetStartPosition(&gAs5600, 0x0000); ///< Set the start position to 0
+    AS5600_SetStopPosition(&gAs5600, 0x0FFF); ///< Set the stop position to 4095
 
     AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
-    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
-    ///<--------------------------------------------------
-
-
-    ///<-------------- Initialize the VL53L1X sensor -----
-    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
-        ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
-        return;
-    }
-    VL53L1X_setDistanceMode(&gVl53l1x, Short); 
-    VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
-    VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
     vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
     
@@ -254,9 +256,9 @@ void control_task( void * pvParameters ){
         // ///<--------------------------------------------------
 
         // ///<-------------- Get distance through VL53L1X ------
-        distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
-        ESP_LOGI(TAG_VL53L1X, "Distance %d mm", distance); ///< Log message
-        estimate_velocity_lidar(&lidar_data, distance, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using lidar data
+        // distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
+        // ESP_LOGI(TAG_VL53L1X, "Distance %d mm", distance); ///< Log message
+        // estimate_velocity_lidar(&lidar_data, distance, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using lidar data
         // printf("Distance: %d mm, with time interval %.2f seconds\n", distance, SAMPLE_TIME / 1000.0f); ///< Log message
         ///<--------------------------------------------------
 
@@ -284,6 +286,14 @@ void control_task( void * pvParameters ){
         ///<------------------------------------------
 
         ///<-------------- Logic to process the data ------
+        if (move_one_time) {
+            bldc_set_duty(&pwm, duty);
+            printf("Updated duty cycle: %hd\n", duty);
+            vTaskDelay(1500 / portTICK_PERIOD_MS); ///< Wait for 1 second
+            bldc_set_duty(&pwm, 0);
+            move_one_time = false; ///< Reset the flag
+        }
+
         if (start_new_task) {
             lidar_data.start_distance = distance; ///< Set the start distance
             lidar_data.prev_distance = distance; ///< Set the previous distance
@@ -294,16 +304,16 @@ void control_task( void * pvParameters ){
 
         float est_dist = (encoder_data.distance + abs(distance - lidar_data.start_distance)) * 0.5f;
 
-        if (est_dist > goal_distance && !reached_goal) {
+        if ((est_dist > goal_distance && !reached_goal) || distance < 70 || distance > 2000) {
             bldc_set_duty(&pwm, 0); ///< Stop the motor
 
             reached_goal = true; ///< Set the flag to true
 
-            printf("Goal distance reached: %d mm\n", distance); ///< Log message
+            // printf("Goal distance reached: %d mm\n", distance); ///< Log message
         } else if (est_dist < goal_distance && !reached_goal) {
             bldc_set_duty(&pwm, output); ///< Set the duty cycle to the output of the PID controller
             
-            printf("Goal distance not reached: %d mm\n", distance); ///< Log message
+            // printf("Goal distance not reached: %d mm\n", distance); ///< Log message
         }
         ///<--------------------------------------------
         
@@ -341,10 +351,8 @@ void uart_task(void* pvParameters) {
                 break;
             
             case 'X': ///< Change the duty cycle
-                int16_t duty;
                 sscanf(data, "X %hd", &duty);
-                bldc_set_duty(&pwm, duty);
-                printf("Updated duty cycle: %hd\n", duty);
+                move_one_time = true; ///< Set the flag to move a bit
                 break;
 
             case 'S': ///< Change the setpoint
