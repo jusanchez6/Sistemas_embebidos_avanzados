@@ -29,6 +29,8 @@
 #include "as5600_defs.h"
 #include "platform_esp32s3.h"
 
+static const char* TAG_AS5600 = "AS5600";
+
 #define VCC_3V3_MV          3300        /*!< VCC in mV */
 #define VCC_3V3_MIN_RR_MV   330         /*!< VCC minimum range in mV -> 10% of VCC */
 #define VCC_3V3_MAX_RR_MV   2970        /*!< VCC maximum range in mV -> 90% of VCC */

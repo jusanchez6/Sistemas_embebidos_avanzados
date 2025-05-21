@@ -60,7 +60,7 @@
 #define SAMPLE_TIME 10 ///< Sample time in ms
 
 ///<---------- Main mode: ------------------------
-#define MAIN_MODE 3 ///< 0 = No Calibration, 1 = ESC Calibration, 2 AS5600 PROBE
+#define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration, 2 AS5600 PROBE
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
@@ -175,12 +175,13 @@ void app_main(void)
     // Read the configuration
     uint16_t conf_reg;
     AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
-    printf("Configuration register read: 0x%04X\n", conf_reg);
-    printf("Configuration register written: 0x%04X\n", conf.WORD);
+    if (conf_reg != conf.WORD) {
+        ESP_LOGI(TAG_AS5600, "AS5600 configuration failed");
+    }
+    else {
+        ESP_LOGI(TAG_AS5600, "AS5600 configuration successful");
+    }
 
-    AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg);
-
-    printf("Status register read: 0x%02X\n", conf_reg);
 
     AS5600_SetStartPosition(&gAs5600, 0x00); ///< Set the start position to 0
     AS5600_SetStopPosition(&gAs5600, 0xFF); ///< Set the stop position to 4095
@@ -377,9 +378,6 @@ void uart_task(void* pvParameters) {
 
 #endif
 
-
-
-#endif
 
 
 #if MAIN_MODE == 1
