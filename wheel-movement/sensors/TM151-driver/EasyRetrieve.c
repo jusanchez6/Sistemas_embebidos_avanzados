@@ -11,7 +11,6 @@ void tm151_init(uart_t *myUART, uint32_t baudrate, uint32_t buffer_size, uint8_t
     // Initialize the TM151 interface
     
     EasyProfile_C_Interface_Init();
-    SerialPort_DataGet_RawAcc(myUART);
 }
 
 void SerialPort_DataGet(uart_t* myUART){
@@ -134,10 +133,12 @@ void SerialPort_DataReceived_RawAcc(uart_t* myUART, float* rawAcc) {
     // This function is called when new serial data is received
     // You can process the received data here
     // For example, you can call SerialPort_DataGet() to handle the data
-    char* rxData[10]; 
-	int   rxSize=10;
+    SerialPort_DataGet_RawAcc(myUART);
+
+    char* rxData[120];
+	int   rxSize=120;
     
-    uart_read(myUART, (uint8_t*)rxData, (size_t)rxSize, 10); // Read the data from UART
+    uart_read(myUART, (uint8_t*)rxData, (size_t)rxSize, 1); // Read the data from UART
 
 	Ep_Header header; // Then let the EasyProfile do the rest such as data assembling and checksum verification.
     if( EP_SUCC_ == EasyProfile_C_Interface_RX((char*)rxData, (int)rxSize, &header)){
@@ -151,4 +152,6 @@ void SerialPort_DataReceived_RawAcc(uart_t* myUART, float* rawAcc) {
             rawAcc[2] = ep_Raw_GyroAccMag.acc[2];
         }
     }
+
+    // uart_clear(myUART); // Clear the UART buffer
 }
