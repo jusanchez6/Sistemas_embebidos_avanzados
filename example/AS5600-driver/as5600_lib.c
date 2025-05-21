@@ -23,14 +23,22 @@ float AS5600_ADC_GetAngle(AS5600_t *as5600)
 {
     float angle;
     if (as5600->adc_handle.is_calibrated && as5600->conf.OUTS == AS5600_OUTPUT_STAGE_ANALOG_RR) {
+        if(!AS5600_IsMagnetDetected(as5600)) {
+            return -1;
+        }
+    
         uint16_t voltage;
         adc_read_mvolt(&as5600->adc_handle, &voltage);
+        ESP_LOGI(TAG_ADC, "ADC voltage: %d mV", voltage);
         voltage = LIMIT(voltage, VCC_3V3_MIN_RR_MV, VCC_3V3_MAX_RR_MV); // The OUT pin of the AS5600 sensor has a range of 10%-90% of VCC
         angle = MAP((float)voltage, VCC_3V3_MIN_RR_MV, VCC_3V3_MAX_RR_MV, 0, 360); // Map the voltage to the angle
+        ESP_LOGI(TAG_ADC, "Angle: %f degrees", angle);
     }
     else {
+        ESP_LOGE(TAG_ADC, "ADC not calibrated or OUTS not set to Analog RR");
         angle = -1;
     }
+
     return angle;
 }
 
@@ -247,12 +255,24 @@ void AS5600_GetConf(AS5600_t *as5600, AS5600_config_t *conf)
 
 void AS5600_GetRawAngle(AS5600_t *as5600, uint16_t *raw_angle)
 {
+    if (AS5600_IsMagnetDetected(as5600) == false) {
+        ESP_LOGI(TAG_ADC, "Magnet not detected");
+        *raw_angle = 0;
+        return;
+    }
+
     i2c_read_reg(&as5600->i2c_handle, AS5600_REG_RAW_ANGLE_H, (uint8_t *)raw_angle, 2);
     *raw_angle = (*raw_angle << 8) | (*raw_angle >> 8);
 }
 
 void AS5600_GetAngle(AS5600_t *as5600, uint16_t *angle)
 {
+    if (AS5600_IsMagnetDetected(as5600) == false) {
+        ESP_LOGI(TAG_ADC, "Magnet not detected");
+        *angle = 0;
+        return;
+    }
+
     i2c_read_reg(&as5600->i2c_handle, AS5600_REG_ANGLE_H, (uint8_t *)angle, 2);
     *angle = (*angle << 8) | (*angle >> 8);
 }
@@ -275,4 +295,13 @@ void AS5600_GetMagnitude(AS5600_t *as5600, uint16_t *magnitude)
 {
     i2c_read_reg(&as5600->i2c_handle, AS5600_REG_MAGNITUDE_H, (uint8_t *)magnitude, 2);
     *magnitude = (*magnitude << 8) | (*magnitude >> 8);
+}
+
+bool AS5600_IsMagnetDetected(AS5600_t *as5600)
+{
+    uint8_t status;
+    AS5600_GetStatus(as5600, &status);
+    status = (status & AS5600_MAGNET_DETECTED) >> 5; // Shift the status to the right to get the magnet detected bit
+
+    return (status == 1) ? true : false; // Check if the magnet is detected
 }

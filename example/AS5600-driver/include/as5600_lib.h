@@ -56,7 +56,12 @@ typedef struct
 /**
  * @brief Initialize the I2C master driver
  * 
+ * @param pointer to the AS5600 structure
  * @param i2c_num I2C port number
+ * @param scl GPIO Number for I2C SCL
+ * @param sda GPIO Number for I2C SDA
+ * @param out GPIO Number for OUT pin
+ * 
  */
 void AS5600_Init(AS5600_t *as5600, i2c_port_t i2c_num, uint8_t scl, uint8_t sda, uint8_t out);
 
@@ -289,5 +294,6 @@ void AS5600_GetAgc(AS5600_t *as5600, uint8_t *agc);
  */
 void AS5600_GetMagnitude(AS5600_t *as5600, uint16_t *magnitude);
 
+bool AS5600_IsMagnetDetected(AS5600_t *as5600);
 
 #endif // __AS5600_H__

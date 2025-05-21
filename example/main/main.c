@@ -11,16 +11,19 @@
 
 AS5600_t gAs5600;
 
-#define SAMPLE_TIME 10  
+#define SAMPLE_TIME 1000 
 
 ///<-------------- AS5600 configuration ---------------
-#define AS5600_I2C_MASTER_SCL_GPIO 4    ///< gpio number for I2C master clock
-#define AS5600_I2C_MASTER_SDA_GPIO 5    ///< gpio number for I2C master data 
-#define AS5600_OUT_GPIO 6               ///< gpio number for OUT signal
+#define AS5600_I2C_MASTER_SCL_GPIO 5    ///< gpio number for I2C master clock
+#define AS5600_I2C_MASTER_SDA_GPIO 4    ///< gpio number for I2C master data 
+#define AS5600_OUT_GPIO 7               ///< gpio number for OUT signal
 #define AS5600_I2C_MASTER_NUM 0         ///< I2C port number for master dev
 #define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
 ///<--------------------------------------------------
 
+float angle; ///< Angle variable
+
+uint16_t angle_i2c; ///< Angle variable for I2C
 
 const char *TAG = "AS5600";
 
@@ -61,21 +64,25 @@ void app_main(void)
     }
 
 
-    AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg); ///< Read the MANG register
-    ESP_LOGI(TAG, "STATUS: 0x%04X", conf_reg); ///< Read the MANG register
+    // AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg); ///< Read the MANG register
+    // ESP_LOGI(TAG, "STATUS: 0x%04X", conf_reg); ///< Read the MANG register
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Delay 1 second
     // calibration:
 
     AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0 degrees
-    AS5600_SetStopPosition(&gAs5600, 4095); ///< Set the end position to 360 degrees
+    AS5600_SetStopPosition(&gAs5600, 4094); ///< Set the end position to 360 degrees
+
     AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
 
     vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Delay 1 second
     
     while (true)
     {
-        ESP_LOGI(TAG, "AS5600 angle: %0.2f", AS5600_ADC_GetAngle(&gAs5600)); ///< Get the angle from the ADC
+        angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
+
+        AS5600_GetAngle(&gAs5600, &angle_i2c);
+
+        ESP_LOGI(TAG, "AS5600 ADC angle: %0.2f", angle); ///< Get the angle from the ADC
         vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Delay 1 second
     }
     

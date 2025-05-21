@@ -35,6 +35,16 @@ typedef enum
 
 
 /**
+ * @brief magnet status for the STATUS register
+ */
+typedef enum
+{
+    AS5600_MAGNET_DETECTED = (0x01)<<5,     ///< Magnet detected
+    AS5600_MAGNET_WEAK = (0x01)<<4,         ///< Magnet strong
+    AS5600_MAGNET_STRONG = (0x01)<<3,       ///< Magnet weak
+} AS5600_status_magnet_t;
+
+/**
  * @brief Power modes for PM bitfield at the CONF register
  * 
  */
