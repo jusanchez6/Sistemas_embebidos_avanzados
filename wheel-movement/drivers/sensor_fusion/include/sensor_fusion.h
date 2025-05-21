@@ -22,6 +22,12 @@ typedef struct
     float prev_acc; // Previous acceleration values
 } imu_data_t;
 
+typedef struct
+{
+    float velocity; // Velocity in cm/s
+    float angle_prev; // Angle in degrees
+    float radio;
+} encoder_data_t;
 
 /**
  * @brief Initialize the sensor fusion module

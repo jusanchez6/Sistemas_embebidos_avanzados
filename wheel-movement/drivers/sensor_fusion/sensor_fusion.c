@@ -19,6 +19,15 @@ void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_
     imu_data->prev_acc = acceleration; ///< Update the previous acceleration value
 }
 
+void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float time_interval){
+    // Placeholder for velocity estimation logic
+    // v(t) = (angle(t) - angle(t-1)) * radio / dt
+    // where dt is the time interval between measurements
+    angle = angle * 3.1415 / 180; ///< Convert angle to radians
+    encoder_data->velocity = (100)* (angle - encoder_data->angle_prev) * encoder_data->radio / time_interval; ///< Calculate the velocity
+    encoder_data->angle_prev = angle; ///< Update the previous angle value
+}
+
 float estimate_velocity(float velocity_imu, float velocity_lidar, float velocity_encoder){
     // Placeholder for position estimation logic
 
