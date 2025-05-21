@@ -20,6 +20,8 @@ typedef struct
 {
     float velocity; // Velocity in cm/s
     float prev_acc; // Previous acceleration values
+
+    float window[100]; // Window for sampling
 } imu_data_t;
 
 typedef struct
@@ -27,13 +29,25 @@ typedef struct
     float velocity; // Velocity in cm/s
     float angle_prev; // Angle in degrees
     float radio;
+
+    float distance; // Distance in cm
+
+    float window[100]; // Window for sampling
 } encoder_data_t;
+
+typedef struct
+{
+    float velocity; // Velocity in cm/s
+    uint16_t prev_distance; // Previous distance in cm
+    
+    uint16_t start_distance; // Start distance in cm
+} lidar_data_t;
 
 /**
  * @brief Initialize the sensor fusion module
  * @param imu_data Pointer to the IMU data structure
  */
-void sf_init(imu_data_t *imu_data);
+void sf_init(imu_data_t *imu_data, encoder_data_t *encoder_data, lidar_data_t *lidar_data);
 
 /**
  * @brief Estimate the velocity using IMU data
@@ -42,6 +56,21 @@ void sf_init(imu_data_t *imu_data);
  * @param time_interval Time interval between measurements (s)
  */
 void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_interval);
+
+/**
+ * @brief Estimate the velocity using Encoder data
+ * @param encoder_data Pointer to the Encoder data structure
+ * @param angle Current angle value (degrees)
+ * @param time_interval Time interval between measurements (s)
+ */
+void estimate_velocity_encoder(encoder_data_t *encoder_data, float angle, float time_interval);
+
+/**
+ * @brief Estimate the distance using Lidar data
+ * @param lidar_data Pointer to the Lidar data structure
+ * @param distance Current distance value (cm)
+ */
+void estimate_velocity_lidar(lidar_data_t *lidar_data, uint16_t distance, float time_interval);
 
 /**
  * @brief Estimate the velocity using Lidar and Encoder data
