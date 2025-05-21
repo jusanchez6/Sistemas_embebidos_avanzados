@@ -111,7 +111,8 @@ AS5600_t gAs5600;     ///< AS5600 object for angle sensor
 vl53l1x_t gVl53l1x;   ///< VL53L1X object for distance sensor
 uart_t myUART;        ///< UART object for TM151 IMU
 float angle;          ///< Angle read from the AS5600 sensor
-uint16_t distance;     ///< Distance read from the VL53L1X sensor
+uint16_t distance, goal_distance;     ///< Distance read from the VL53L1X sensor
+bool reached_goal = false; ///< Flag to indicate if the goal distance is reached
 
 static volatile pid_block_handle_t pid; // PID control block handle
 pid_parameter_t pid_param = {
@@ -125,34 +126,19 @@ pid_parameter_t pid_param = {
     .beta = 0.0f
 };
 
-/*
+/**
  * @brief Task to control the wheel
+ * 
+ * @param pvParameters 
  */
-// void vTaskControl( void * pvParameters );
+void control_task( void * pvParameters );
 
-void uart_task(void* arg) {
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
-    };
-    uart_param_config(UART_NUM_0, &uart_config);
-    uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
-    uart_flush(UART_NUM_0);  // Flush UART buffer
-
-    char data[128];
-    while (1) {
-        int len = uart_read_bytes(UART_NUM_0, (uint8_t*)data, sizeof(data) - 1, pdMS_TO_TICKS(1000));
-        if (len > 0) {
-            data[len] = '\0';
-            sscanf(data, "%f %f %f %f", &pid_param.kp, &pid_param.ki, &pid_param.kd, &pid_param.set_point);
-            pid_update_parameters(pid, &pid_param);
-            printf("Updated PID values: kp=%.2f, ki=%.2f, kd=%.2f, setpoint=%.2f\n", pid_param.kp, pid_param.ki, pid_param.kd, pid_param.set_point);
-        }
-    }
-}
+/**
+ * @brief UART task to read data from console
+ * 
+ * @param pvParameters 
+ */
+void uart_task(void * pvParameters);
 
 void app_main(void)
 {
@@ -199,24 +185,20 @@ void app_main(void)
 
 
     ///<-------------- Initialize the VL53L1X sensor -----
-    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
-        ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
-        return;
-    }
-    VL53L1X_setDistanceMode(&gVl53l1x, Short); 
-    VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
-    VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
-    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
+    // if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+    //     ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
+    //     return;
+    // }
+    // VL53L1X_setDistanceMode(&gVl53l1x, Short); 
+    // VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
+    // VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
+    // vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
     
 
     ///<-------------- Initialize the TM151 sensor ------
     tm151_init(&myUART, TM151_UART_BAUDRATE, TM151_BUFFER_SIZE, TM151_UART_TX, TM151_UART_RX); ///< Initialize the TM151 sensor
-
-    float acceleration[3];
-    imu_data_t imu_data;
-    imu_data.velocity = 0.0f; ///< Initialize the velocity to 0
-    imu_data.prev_acc = 0.0f; ///< Initialize the previous acceleration to 0
+    ///<--------------------------------------------------
 
     // ///<-------------- Initialize the AS5600 sensor ------
     // encoder_data_t encoder_data;
@@ -248,12 +230,25 @@ void app_main(void)
     // }
     ///<--------------------------------------------------
 
+    xTaskCreate(uart_task, "uart_task", 4096, NULL, 10, NULL);  // UART task
+    // xTaskCreate(control_task, "control_task", 4096, NULL, 10, NULL);  // Control task
+    
+}
+
+#endif
+
+// Task to control the wheel
+void control_task( void * pvParameters ){
+
+    float acceleration[3];
+    imu_data_t imu_data;
+    imu_data.velocity = 0.0f; ///< Initialize the velocity to 0
+    imu_data.prev_acc = 0.0f; ///< Initialize the previous acceleration to 0
+
     uint32_t timestamp = 1000000; // 1 second
     float est_velocity = 0.0f, last_est_velocity = 0.0f;
     float beta = exp(-2 * PI * 1 / SAMPLE_RATE);  // 10Hz cutoff frequency
     float output = 0.0f;
-
-    xTaskCreate(uart_task, "uart_task", 4096, NULL, 10, NULL);  // UART task
 
     while (1)
     {
@@ -263,8 +258,8 @@ void app_main(void)
         // ///<--------------------------------------------------
 
         // ///<-------------- Get distance through VL53L1X ------
-        distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
-        ESP_LOGI(TAG_VL53L1X, "Distance %d mm", distance); ///< Log message
+        // distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
+        // ESP_LOGI(TAG_VL53L1X, "Distance %d mm", distance); ///< Log message
         ///<--------------------------------------------------
 
         ///<-------------- Get data from TM151 --------------
@@ -272,7 +267,7 @@ void app_main(void)
         // printf("Acceleration: %0.4f %0.4f %0.4f\n", acceleration[0], acceleration[1], acceleration[2]); ///< Log message
         float acc_2dp = (int)(acceleration[0] * 10);
         estimate_velocity_imu(&imu_data, (float)acc_2dp / 10.0, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using IMU data
-        printf("Velocity: %0.4f cm/s, with time interval %.2f seconds\n", imu_data.velocity, SAMPLE_TIME / 1000.0f); ///< Log message
+        // printf("Velocity: %0.4f cm/s, with time interval %.2f seconds\n", imu_data.velocity, SAMPLE_TIME / 1000.0f); ///< Log message
         ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
@@ -297,43 +292,77 @@ void app_main(void)
         }
 
         // printf("I,%" PRIu32 ",%hd,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, distance, est_velocity, pid_param.set_point, output, 0.0, 0.0);
-        printf("I,%" PRIu32 ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, est_velocity, pid_param.set_point, 0.0, output, 0.0, 0.0);
+        // printf("I,%" PRIu32 ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, est_velocity, pid_param.set_point, 0.0, output, 0.0, 0.0);
 
         timestamp += 1000000 / SAMPLE_RATE;  // 100Hz
         ///<------------------------------------------
 
-        vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 2 seconds
+        vTaskDelay(10 / portTICK_PERIOD_MS); ///< Wait for 10 ms
     }
 }
 
-#endif
+// Task to read data from console
+void uart_task(void* pvParameters) {
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    };
+    uart_param_config(UART_NUM_0, &uart_config);
+    uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
+    uart_flush(UART_NUM_0);  // Flush UART buffer
 
-// Task to control the wheel
-// void vTaskControl( void * pvParameters ){
-//     QueueHandle_t queue = (QueueHandle_t) pvParameters;
-//     alarm_event_t evt; ///< Event data for the timer
+    char data[128];
+    while (1) {
+        int len = uart_read_bytes(UART_NUM_0, (uint8_t*)data, sizeof(data) - 1, pdMS_TO_TICKS(1000));
+        if (len > 0) {
+            data[len] = '\0';
+            
 
-//     while(1){
-//         if (xQueueReceive(queue, &evt, pdMS_TO_TICKS(500))) {
-//             ///<----------------- Act to angle -------------------
-//             ESP_LOGI(TAG_ADC, "Angle: %0.2f\n", evt.AS5600_angle); ///< Log message
-//             ///<--------------------------------------------------
+            switch (data[0])
+            {
+            case 'P': ///< Change the PID parameters
+                sscanf(data, "P %f %f %f %f", &pid_param.kp, &pid_param.ki, &pid_param.kd, &pid_param.set_point);
+                pid_update_parameters(pid, &pid_param);
+                printf("Updated PID values: kp=%.2f, ki=%.2f, kd=%.2f, setpoint=%.2f\n", pid_param.kp, pid_param.ki, pid_param.kd, pid_param.set_point);
+                break;
+            
+            case 'X': ///< Change the duty cycle
+                int16_t duty;
+                sscanf(data, "X %hd", &duty);
+                bldc_set_duty(&pwm, duty);
+                printf("Updated duty cycle: %hd\n", duty);
+                break;
 
-//             ///<------------------ Act to distance ---------------
-//             ESP_LOGI(TAG_VL53L1X, "Distance %d mm", evt.VL53L1X_distance);
-//             ///<--------------------------------------------------
+            case 'S': ///< Change the setpoint
+                sscanf(data, "S %f", &pid_param.set_point);
+                pid_update_parameters(pid, &pid_param);
+                printf("Updated setpoint: %.2f\n", pid_param.set_point);
+                break;
 
-//             ///<-------------- Act to acceleration ---------------
-//             // ESP_LOGI(TAG_TM151, "Acceleration: %0.4f %0.4f %0.4f", evt.acceleration[0], evt.acceleration[1], evt.acceleration[2]); ///< Log message
-//             ///<--------------------------------------------------
-
-//             ///<-------------- PID Control ---------------
-//             // PID_Compute(&pid, /*Velocity estimation*/, SAMPLE_TIME / 1000.0f); ///< Compute the PID control
-//             // bldc_set_duty(&pwm, pid.control); ///< Set the duty cycle to target
-//             ///<------------------------------------------
-//         }
-//     }
-// }
+            case 'D': ///< Move to the right (derecha)
+                sscanf(data, "D%hu_%f", &goal_distance, &pid_param.set_point);
+                pid_update_parameters(pid, &pid_param);
+                reached_goal = false;
+                printf("Moving to the right with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, pid_param.set_point);
+                break;
+            
+            case 'I': ///< Move to the left (izquierda)
+                sscanf(data, "I%hu_%f", &goal_distance, &pid_param.set_point);
+                pid_param.set_point = -pid_param.set_point;
+                pid_update_parameters(pid, &pid_param);
+                reached_goal = false;
+                printf("Moving to the left with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, -pid_param.set_point);
+                break;
+            
+            default:
+                break;
+            }
+        }
+    }
+}
 
 #if MAIN_MODE == 1
 
