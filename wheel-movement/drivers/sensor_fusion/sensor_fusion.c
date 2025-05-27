@@ -36,7 +36,7 @@ void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_
     int win_size = sizeof(imu_data->window) / sizeof(float);
     float vel = (100) * (imu_data->prev_acc + acceleration) * time_interval * 0.5f;
 
-    if(win_size < 100){
+    if(win_size < WIN_SIZE){
         imu_data->velocity += vel; ///< Calculate the velocity
         imu_data->window[win_size] = vel; ///< Store the velocity in the window
     } else {
@@ -63,7 +63,7 @@ void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float
         encoder_data->distance += dist; ///< Store the distance
         float vel =  dist / time_interval;
 
-        if(win_size < 100){
+        if(win_size < WIN_SIZE){
             encoder_data->velocity += vel; ///< Calculate the velocity
             encoder_data->window[win_size] = vel; ///< Store the velocity in the window
         } else {
@@ -81,7 +81,7 @@ void estimate_velocity_lidar(lidar_data_t * lidar_data, uint16_t distance, float
     // Placeholder for velocity estimation logic
     // v(t) = (distance(t) - distance(t-1)) / dt
     // where dt is the time interval between measurements
-    float dist = abs(lidar_data->prev_distance - distance); ///< Calculate the distance in cm
+    float dist = abs(lidar_data->prev_distance - distance) / 10; ///< Calculate the distance in cm
     lidar_data->velocity = (lidar_data->velocity + (dist / time_interval)) / 2; ///< Calculate the velocity
     lidar_data->prev_distance = distance; ///< Store the previous distance
 }
