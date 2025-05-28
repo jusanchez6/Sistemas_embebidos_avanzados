@@ -80,8 +80,8 @@
 
 ///<------------- VL53L1X configuration --------------
 #define VL53L1X_I2C_PORT 1      ///< I2C port number for master dev
-#define VL53L1X_SDA_GPIO 16     ///< gpio number for I2C master data 
-#define VL53L1X_SCL_GPIO 15     ///< gpio number for I2C mastes clock
+#define VL53L1X_SDA_GPIO 41     ///< gpio number for I2C master data 
+#define VL53L1X_SCL_GPIO 42     ///< gpio number for I2C mastes clock
 ///<--------------------------------------------------
 
 ///<-------------- BLDC configuration -----------------
@@ -117,6 +117,8 @@ int16_t duty;
 
 static volatile pid_block_handle_t pid; // PID control block handle
 
+uint32_t temp_ctr = 0; ///< Temporary counter to stop move_one_time
+
 pid_parameter_t pid_param = {
     .kp = PID_KP,
     .ki = PID_KI,
@@ -151,14 +153,14 @@ void app_main(void)
 {
 
     ///<-------------- Initialize the VL53L1X sensor -----
-    // if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
-    //     ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
-    //     return;
-    // }
-    // VL53L1X_setDistanceMode(&gVl53l1x, Short); 
-    // VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
-    // VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
-    // vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
+    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+        ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
+        return;
+    }
+    VL53L1X_setDistanceMode(&gVl53l1x, Short); 
+    VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
+    VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
+    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
 
 
@@ -169,7 +171,7 @@ void app_main(void)
     bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
     ///<--------------------------------------------------
 
-    vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
+    // vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
 
     ///<------------- Initialize the AS5600 sensor -------
     AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
@@ -208,11 +210,11 @@ void app_main(void)
     ///<--------------------------------------------------
 
     ///<-------------- Initialize the PID controller ------
-    pid_config_t pid_config = {
-        .init_param = pid_param
-    };
+    // pid_config_t pid_config = {
+    //     .init_param = pid_param
+    // };
 
-    pid_new_control_block(&pid_config, &pid);
+    // pid_new_control_block(&pid_config, &pid);
     ///<---------------------------------------------------
 
     sf_init(&imu_data, &encoder_data, &lidar_data); ///< Initialize the sensor fusion module
@@ -250,48 +252,55 @@ void control_task( void * pvParameters ){
     {
         ///<-------------- Get angle through ADC -------------
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
-        ESP_LOGI(TAG_ADC, "Angle: %0.2f\n", angle); ///< Log message
         estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
-        // printf("Angle: %0.2f degrees, with time interval %.2f seconds\n", angle, SAMPLE_TIME / 1000.0f); ///< Log message
         // ///<--------------------------------------------------
 
         // ///<-------------- Get distance through VL53L1X ------
-        // distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
-        // ESP_LOGI(TAG_VL53L1X, "Distance %d mm", distance); ///< Log message
-        // estimate_velocity_lidar(&lidar_data, distance, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using lidar data
-        // printf("Distance: %d mm, with time interval %.2f seconds\n", distance, SAMPLE_TIME / 1000.0f); ///< Log message
+        distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
+        estimate_velocity_lidar(&lidar_data, distance, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using lidar data
         ///<--------------------------------------------------
 
         ///<-------------- Get data from TM151 --------------
         SerialPort_DataReceived_RawAcc(&myUART, acceleration);
+        
         float acc_1dp = (int)(acceleration[0] * 10);
         estimate_velocity_imu(&imu_data, (float)acc_1dp / 10.0, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using IMU data
-        // printf("Velocity: %0.4f cm/s, with time interval %.2f seconds\n", imu_data.velocity, SAMPLE_TIME / 1000.0f); ///< Log message
+        ///<--------------------------------------------------
+
+        ///<-------------- Log the data ----------------------
+        // printf("Angle: %0.2f degrees\tDistance: %d mm\tAcceleration: X: %0.2f m/s^2\n",
+        //         angle,                distance,        acceleration[0]); ///< Log message
+        printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\n", 
+               encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
         ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
         // Low-pass filter
-        est_velocity = estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
+        // est_velocity = estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
 
-        est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity;
-        last_est_velocity = est_velocity;
+        // est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity;
+        // last_est_velocity = est_velocity;
 
-        // Update PID Controller
-        pid_compute(pid, est_velocity, &output);
+        // // Update PID Controller
+        // pid_compute(pid, est_velocity, &output);
         
-        // printf("I,%" PRIu32 ",%hd,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, distance, est_velocity, pid_param.set_point, output, 0.0, 0.0);
-        // printf("I,%" PRIu32 ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, est_velocity, pid_param.set_point, 0.0, output, 0.0, 0.0);
+        // // printf("I,%" PRIu32 ",%hd,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, distance, est_velocity, pid_param.set_point, output, 0.0, 0.0);
+        // // printf("I,%" PRIu32 ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, est_velocity, pid_param.set_point, 0.0, output, 0.0, 0.0);
 
-        timestamp += 1000000 / SAMPLE_RATE;  // 100Hz
+        // timestamp += 1000000 / SAMPLE_RATE;  // 100Hz
         ///<------------------------------------------
 
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
-            bldc_set_duty(&pwm, duty);
-            printf("Updated duty cycle: %hd\n", duty);
-            vTaskDelay(1500 / portTICK_PERIOD_MS); ///< Wait for 1 second
-            bldc_set_duty(&pwm, 0);
-            move_one_time = false; ///< Reset the flag
+            if (temp_ctr < 1500) {
+                temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
+                bldc_set_duty(&pwm, duty);
+                // printf("Updated duty cycle: %hd\n", duty);
+            } else {
+                temp_ctr = 0; ///< Reset the temporary counter
+                bldc_set_duty(&pwm, 0);
+                move_one_time = false; ///< Reset the flag
+            }
         }
 
         if (start_new_task) {
@@ -311,7 +320,7 @@ void control_task( void * pvParameters ){
 
             // printf("Goal distance reached: %d mm\n", distance); ///< Log message
         } else if (est_dist < goal_distance && !reached_goal) {
-            bldc_set_duty(&pwm, output); ///< Set the duty cycle to the output of the PID controller
+            // bldc_set_duty(&pwm, output); ///< Set the duty cycle to the output of the PID controller
             
             // printf("Goal distance not reached: %d mm\n", distance); ///< Log message
         }

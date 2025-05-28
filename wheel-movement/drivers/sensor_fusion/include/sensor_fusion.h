@@ -16,12 +16,14 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define WIN_SIZE 35 ///< Size of the window for sampling
+
 typedef struct
 {
     float velocity; // Velocity in cm/s
     float prev_acc; // Previous acceleration values
 
-    float window[100]; // Window for sampling
+    float window[WIN_SIZE]; // Window for sampling
 } imu_data_t;
 
 typedef struct
@@ -32,7 +34,7 @@ typedef struct
 
     float distance; // Distance in cm
 
-    float window[100]; // Window for sampling
+    float window[WIN_SIZE]; // Window for sampling
 } encoder_data_t;
 
 typedef struct
