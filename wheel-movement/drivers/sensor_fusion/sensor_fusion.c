@@ -59,7 +59,7 @@ void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float
     angle = angle * 3.1415 / 180; ///< Convert angle to radians
     float dist = abs(angle - encoder_data->angle_prev) * encoder_data->radio; ///< Calculate the distance in cm
 
-    if(dist < 15){ ///< If angle difference is not too big
+    if(abs(angle - encoder_data->angle_prev) < 100){ ///< If angle difference is not too big
         encoder_data->distance += dist; ///< Store the distance
         float vel =  dist / time_interval;
 
@@ -82,8 +82,11 @@ void estimate_velocity_lidar(lidar_data_t * lidar_data, uint16_t distance, float
     // v(t) = (distance(t) - distance(t-1)) / dt
     // where dt is the time interval between measurements
     float dist = abs(lidar_data->prev_distance - distance) / 10; ///< Calculate the distance in cm
-    lidar_data->velocity = (lidar_data->velocity + (dist / time_interval)) / 2; ///< Calculate the velocity
-    lidar_data->prev_distance = distance; ///< Store the previous distance
+    if (dist < 0.5f) {
+        lidar_data->velocity = (lidar_data->velocity + (dist / time_interval)) / 2; ///< Calculate the velocity
+        lidar_data->prev_distance = distance; ///< Store the previous distance
+    }
+    
 }
 
 float estimate_position(float position_lidar, float position_encoder){
