@@ -35,18 +35,21 @@ void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_
 
     // Get size of the window
     int win_size = sizeof(imu_data->window) / sizeof(float);
-    float vel = (100) * (imu_data->prev_acc + acceleration) * time_interval * 0.5f;
+    // printf("Window size: %d\n", win_size); ///< Log message
+    float vel = 4 * (100) * (imu_data->prev_acc + acceleration) * time_interval;
 
     if(win_size < WIN_SIZE){
         imu_data->velocity += vel; ///< Calculate the velocity
         imu_data->window[win_size] = vel; ///< Store the velocity in the window
     } else {
-        imu_data->velocity += vel - imu_data->window[0]; ///< Calculate the velocity
+        imu_data->velocity += imu_data->window[0] - vel; ///< Calculate the velocity
         for(int i = 0; i < win_size - 1; i++){
             imu_data->window[i] = imu_data->window[i + 1]; ///< Shift the window
         }
         imu_data->window[win_size - 1] = vel; ///< Store the velocity in the window
     }
+
+    printf("IMU Velocity: %0.2f cm/s\tAcceleration: %0.2f m/s^2\tPrev Acceleration: %0.2f\n", imu_data->velocity, acceleration, imu_data->prev_acc); ///< Log message
     
     imu_data->prev_acc = acceleration; ///< Update the previous acceleration value
 }
@@ -58,17 +61,19 @@ void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float
     angle = angle * 3.1415 / 180; ///< Convert angle to radians
     float dist = fabsf(angle - encoder_data->angle_prev) * encoder_data->radio; ///< Calculate the distance in cm
 
-    if(fabsf(angle - encoder_data->angle_prev) < 3){ ///< If angle (in radians) difference is not too big
+    // printf("Angle: %0.2f r\tLast Angle: %0.2f r\tDistance: %0.2f cm\t", angle, encoder_data->angle_prev, dist); ///< Log message
+
+    if(dist < 1){ ///< If angle (in radians) difference is not too big
         encoder_data->distance += dist; ///< Store the distance
         float vel =  dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
         encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * vel; ///< Pass the velocity through a low-pass filter
 
-        printf("ENC New Angle: %0.2f r\tLast Angle %0.2f r\tDistance: %0.2f cm\tVelocity: %0.2f\n",
-            angle, encoder_data->angle_prev, encoder_data->distance, encoder_data->velocity); ///< Log message
-
-        encoder_data->angle_prev = angle; ///< Update the previous angle value
+        // printf("ENC New Angle: %0.2f r\tLast Angle %0.2f r\tDistance: %0.2f cm\tVelocity: %0.2f\n",
+        //     angle, encoder_data->angle_prev, encoder_data->distance, encoder_data->velocity); ///< Log message
+        
         encoder_data->last_vel = encoder_data->velocity; ///< Update the last velocity value
     }
+    encoder_data->angle_prev = angle; ///< Update the previous angle value
 }
 
 void estimate_velocity_lidar(lidar_data_t * lidar_data, uint16_t distance, float time_interval){

@@ -252,7 +252,7 @@ void control_task( void * pvParameters ){
     {
         ///<-------------- Get angle through ADC -------------
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
-        // estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
+        estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
         // ///<--------------------------------------------------
 
         // ///<-------------- Get distance through VL53L1X ------
@@ -292,7 +292,6 @@ void control_task( void * pvParameters ){
 
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
-            estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
             if (temp_ctr < 1000) {
                 temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
                 bldc_set_duty(&pwm, duty);
