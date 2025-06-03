@@ -18,6 +18,7 @@ void sf_init(imu_data_t *imu_data, encoder_data_t *encoder_data, lidar_data_t *l
 
     // Initialize the Encoder data structure
     encoder_data->velocity = 0.0f; ///< Initialize velocity to 0
+    encoder_data->last_vel = 0.0f; ///< Initialize last velocity to 0
     encoder_data->angle_prev = 0.0f; ///< Initialize previous angle to 0
     encoder_data->radio = 3.0f; ///< Initialize radio to 3 cm
 
@@ -54,30 +55,19 @@ void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float
     // Placeholder for velocity estimation logic
     // v(t) = (angle(t) - angle(t-1)) * radio / dt
     // where dt is the time interval between measurements
-    // Get size of the window
-    int win_size = sizeof(encoder_data->window) / sizeof(float);
     angle = angle * 3.1415 / 180; ///< Convert angle to radians
     float dist = fabsf(angle - encoder_data->angle_prev) * encoder_data->radio; ///< Calculate the distance in cm
 
-    if(fabsf(angle - encoder_data->angle_prev) < 4){ ///< If angle (in radians) difference is not too big
+    if(fabsf(angle - encoder_data->angle_prev) < 3){ ///< If angle (in radians) difference is not too big
         encoder_data->distance += dist; ///< Store the distance
-        float vel =  dist / time_interval;
+        float vel =  dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
+        encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * vel; ///< Pass the velocity through a low-pass filter
 
-        if(win_size < WIN_SIZE){
-            encoder_data->velocity += vel; ///< Calculate the velocity
-            encoder_data->window[win_size] = vel; ///< Store the velocity in the window
-        } else {
-            encoder_data->velocity += vel - encoder_data->window[0]; ///< Calculate the velocity
-            for(int i = 0; i < win_size - 1; i++){
-                encoder_data->window[i] = encoder_data->window[i + 1]; ///< Shift the window
-            }
-            encoder_data->window[win_size - 1] = vel; ///< Store the velocity in the window
-        }
-
-        printf("ENC New Angle: %0.2f r\tLast Angle %0.2f r\tDistance: %0.2f cm\n",
-            angle, encoder_data->angle_prev, encoder_data->distance); ///< Log message
+        printf("ENC New Angle: %0.2f r\tLast Angle %0.2f r\tDistance: %0.2f cm\tVelocity: %0.2f\n",
+            angle, encoder_data->angle_prev, encoder_data->distance, encoder_data->velocity); ///< Log message
 
         encoder_data->angle_prev = angle; ///< Update the previous angle value
+        encoder_data->last_vel = encoder_data->velocity; ///< Update the last velocity value
     }
 }
 

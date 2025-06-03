@@ -270,7 +270,7 @@ void control_task( void * pvParameters ){
         ///<-------------- Log the data ----------------------
         // printf("Angle: %0.2f degrees\tDistance: %d mm\tAcceleration: X: %0.2f m/s^2\n",
         //         angle,                distance,        acceleration[0]); ///< Log message
-        // printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\t", 
+        // printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\n", 
         //        encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
         ///<--------------------------------------------------
 
@@ -293,7 +293,7 @@ void control_task( void * pvParameters ){
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
             estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
-            if (temp_ctr < 1500) {
+            if (temp_ctr < 1000) {
                 temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
                 bldc_set_duty(&pwm, duty);
                 // printf("Updated duty cycle: %hd\n", duty);
@@ -312,7 +312,7 @@ void control_task( void * pvParameters ){
             reached_goal = false; ///< Reset the flag
         }
 
-        float est_dist = (encoder_data.distance + fabsf(distance - lidar_data.start_distance)) * 0.5f;
+        float est_dist = encoder_data.distance /*+ fabsf(distance - lidar_data.start_distance)) * 0.5f*/;
         // printf("DIST Encoder: %.2f cm\t Lidar: %hu cm\tEstimated: %.2f cm\n",
         //         encoder_data.distance, fabsf(distance - lidar_data.start_distance), est_dist); ///< Log message
 
@@ -366,6 +366,7 @@ void uart_task(void* pvParameters) {
                 sscanf(data, "X %hd", &duty);
                 move_one_time = true; ///< Set the flag to move a bit
                 encoder_data.distance = 0; ///< Set the distance to 0
+                encoder_data.last_vel = 0; ///< Reset the last velocity
                 break;
 
             case 'S': ///< Change the setpoint
