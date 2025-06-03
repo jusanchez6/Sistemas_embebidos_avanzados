@@ -171,7 +171,7 @@ void app_main(void)
     bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
     ///<--------------------------------------------------
 
-    // vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
+    vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
 
     ///<------------- Initialize the AS5600 sensor -------
     AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
@@ -252,7 +252,7 @@ void control_task( void * pvParameters ){
     {
         ///<-------------- Get angle through ADC -------------
         angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
-        estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
+        // estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
         // ///<--------------------------------------------------
 
         // ///<-------------- Get distance through VL53L1X ------
@@ -270,8 +270,8 @@ void control_task( void * pvParameters ){
         ///<-------------- Log the data ----------------------
         // printf("Angle: %0.2f degrees\tDistance: %d mm\tAcceleration: X: %0.2f m/s^2\n",
         //         angle,                distance,        acceleration[0]); ///< Log message
-        printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\t", 
-               encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
+        // printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\t", 
+        //        encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
         ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
@@ -292,6 +292,7 @@ void control_task( void * pvParameters ){
 
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
+            estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
             if (temp_ctr < 1500) {
                 temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
                 bldc_set_duty(&pwm, duty);
@@ -311,9 +312,9 @@ void control_task( void * pvParameters ){
             reached_goal = false; ///< Reset the flag
         }
 
-        float est_dist = (encoder_data.distance + abs(distance - lidar_data.start_distance)) * 0.5f;
-        printf("DIST Encoder: %.2f cm\t Lidar: %hu cm\tEstimated: %.2f cm\n",
-                encoder_data.distance, abs(distance - lidar_data.start_distance), est_dist); ///< Log message
+        float est_dist = (encoder_data.distance + fabsf(distance - lidar_data.start_distance)) * 0.5f;
+        // printf("DIST Encoder: %.2f cm\t Lidar: %hu cm\tEstimated: %.2f cm\n",
+        //         encoder_data.distance, fabsf(distance - lidar_data.start_distance), est_dist); ///< Log message
 
         if ((est_dist > goal_distance && !reached_goal) || distance < 70 || distance > 2000) {
             bldc_set_duty(&pwm, 0); ///< Stop the motor
@@ -364,6 +365,7 @@ void uart_task(void* pvParameters) {
             case 'X': ///< Change the duty cycle
                 sscanf(data, "X %hd", &duty);
                 move_one_time = true; ///< Set the flag to move a bit
+                encoder_data.distance = 0; ///< Set the distance to 0
                 break;
 
             case 'S': ///< Change the setpoint
