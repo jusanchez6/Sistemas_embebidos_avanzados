@@ -29,12 +29,11 @@ typedef struct
 typedef struct
 {
     float velocity; // Velocity in cm/s
+    float last_vel; // Last velocity in cm/s
     float angle_prev; // Angle in degrees
     float radio;
 
     float distance; // Distance in cm
-
-    float window[WIN_SIZE]; // Window for sampling
 } encoder_data_t;
 
 typedef struct

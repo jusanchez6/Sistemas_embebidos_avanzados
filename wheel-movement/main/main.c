@@ -171,7 +171,7 @@ void app_main(void)
     bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
     ///<--------------------------------------------------
 
-    // vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
+    vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
 
     ///<------------- Initialize the AS5600 sensor -------
     AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
@@ -210,11 +210,11 @@ void app_main(void)
     ///<--------------------------------------------------
 
     ///<-------------- Initialize the PID controller ------
-    // pid_config_t pid_config = {
-    //     .init_param = pid_param
-    // };
+    pid_config_t pid_config = {
+        .init_param = pid_param
+    };
 
-    // pid_new_control_block(&pid_config, &pid);
+    pid_new_control_block(&pid_config, &pid);
     ///<---------------------------------------------------
 
     sf_init(&imu_data, &encoder_data, &lidar_data); ///< Initialize the sensor fusion module
@@ -270,19 +270,19 @@ void control_task( void * pvParameters ){
         ///<-------------- Log the data ----------------------
         // printf("Angle: %0.2f degrees\tDistance: %d mm\tAcceleration: X: %0.2f m/s^2\n",
         //         angle,                distance,        acceleration[0]); ///< Log message
-        printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\n", 
-               encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
+        // printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\n", 
+        //        encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
         ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
         // Low-pass filter
-        // est_velocity = estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
+        est_velocity = estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
 
-        // est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity;
-        // last_est_velocity = est_velocity;
+        est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity;
+        last_est_velocity = est_velocity;
 
-        // // Update PID Controller
-        // pid_compute(pid, est_velocity, &output);
+        // Update PID Controller
+        pid_compute(pid, est_velocity, &output);
         
         // // printf("I,%" PRIu32 ",%hd,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, distance, est_velocity, pid_param.set_point, output, 0.0, 0.0);
         // // printf("I,%" PRIu32 ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, est_velocity, pid_param.set_point, 0.0, output, 0.0, 0.0);
@@ -292,7 +292,7 @@ void control_task( void * pvParameters ){
 
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
-            if (temp_ctr < 1500) {
+            if (temp_ctr < 1000) {
                 temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
                 bldc_set_duty(&pwm, duty);
                 // printf("Updated duty cycle: %hd\n", duty);
@@ -311,7 +311,9 @@ void control_task( void * pvParameters ){
             reached_goal = false; ///< Reset the flag
         }
 
-        float est_dist = (encoder_data.distance + abs(distance - lidar_data.start_distance)) * 0.5f;
+        float est_dist = encoder_data.distance /*+ fabsf(distance - lidar_data.start_distance)) * 0.5f*/;
+        // printf("DIST Encoder: %.2f cm\t Lidar: %hu cm\tEstimated: %.2f cm\n",
+        //         encoder_data.distance, fabsf(distance - lidar_data.start_distance), est_dist); ///< Log message
 
         if ((est_dist > goal_distance && !reached_goal) || distance < 70 || distance > 2000) {
             bldc_set_duty(&pwm, 0); ///< Stop the motor
@@ -320,7 +322,7 @@ void control_task( void * pvParameters ){
 
             // printf("Goal distance reached: %d mm\n", distance); ///< Log message
         } else if (est_dist < goal_distance && !reached_goal) {
-            // bldc_set_duty(&pwm, output); ///< Set the duty cycle to the output of the PID controller
+            bldc_set_duty(&pwm, output); ///< Set the duty cycle to the output of the PID controller
             
             // printf("Goal distance not reached: %d mm\n", distance); ///< Log message
         }
@@ -362,6 +364,8 @@ void uart_task(void* pvParameters) {
             case 'X': ///< Change the duty cycle
                 sscanf(data, "X %hd", &duty);
                 move_one_time = true; ///< Set the flag to move a bit
+                encoder_data.distance = 0; ///< Set the distance to 0
+                encoder_data.last_vel = 0; ///< Reset the last velocity
                 break;
 
             case 'S': ///< Change the setpoint
