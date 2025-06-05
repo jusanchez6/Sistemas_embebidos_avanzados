@@ -15,8 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 
-#define WIN_SIZE 35 ///< Size of the window for sampling
+#define WIN_SIZE 25 ///< Size of the window for sampling
 
 typedef struct
 {
@@ -34,6 +35,7 @@ typedef struct
     float radio;
 
     float distance; // Distance in cm
+    bool estimate; // Flag to indicate if the estimate is valid
 } encoder_data_t;
 
 typedef struct

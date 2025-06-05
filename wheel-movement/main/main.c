@@ -184,7 +184,7 @@ void app_main(void)
         .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
         .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
         .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
-        .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+        .WD = AS5600_WATCHDOG_OFF, ///< Watchdog on
     };
     AS5600_SetConf(&gAs5600, conf);
     
@@ -269,11 +269,19 @@ void control_task( void * pvParameters ){
         ///<--------------------------------------------------
 
         ///<-------------- Log the data ----------------------
-        // printf("Angle: %0.2f degrees\tDistance: %d mm\tAcceleration: X: %0.2f m/s^2\n",
-        //         angle,                distance,        acceleration[0]); ///< Log message
-        // printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\n", 
-        //        encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
-        ///<--------------------------------------------------
+        // ESP_LOGI("DATA", "Velocidad: %.2f cm/s\tDistance: %.2f cm\tAcceleration: X: %.2f m/s^2",
+        //      encoder_data.velocity, encoder_data.distance, acceleration[0]);
+
+        ESP_LOGI("DATA", "IMU Velocity: %.2f cm/s\t IMU Aceleration: %.2f",
+             imu_data.velocity, acceleration[0]);
+        
+        // ESP_LOGI("DATA", "IMU Velocity: %.4f cm/s\tLidar Velocity: %.4f cm/s\tEncoder Velocity: %.4f cm/s",
+        //      imu_data.velocity, lidar_data.velocity, encoder_data.velocity);
+
+
+        // ESP_LOGI("DATA", "VEL Encoder: %.4f cm/s\tIMU: %.4f cm/s\tLidar: %.4f cm/s",
+        //      encoder_data.velocity, imu_data.velocity, lidar_data.velocity);
+        // ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
         // Low-pass filter
@@ -300,6 +308,7 @@ void control_task( void * pvParameters ){
             } else {
                 temp_ctr = 0; ///< Reset the temporary counter
                 bldc_set_duty(&pwm, 0);
+                encoder_data.estimate = 0; ///< Reset the flag
                 move_one_time = false; ///< Reset the flag
             }
         }
@@ -318,6 +327,7 @@ void control_task( void * pvParameters ){
 
         if ((est_dist > goal_distance && !reached_goal) || distance < 70 || distance > 2000) {
             bldc_set_duty(&pwm, 0); ///< Stop the motor
+            encoder_data.estimate = 0; ///< Reset the flag
 
             reached_goal = true; ///< Set the flag to true
 
@@ -367,6 +377,7 @@ void uart_task(void* pvParameters) {
                 move_one_time = true; ///< Set the flag to move a bit
                 encoder_data.distance = 0; ///< Set the distance to 0
                 encoder_data.last_vel = 0; ///< Reset the last velocity
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
                 break;
 
             case 'S': ///< Change the setpoint
@@ -376,6 +387,7 @@ void uart_task(void* pvParameters) {
                 break;
 
             case 'D': ///< Move to the right (derecha)
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
                 sscanf(data, "D%hu_%f", &goal_distance, &pid_param.set_point);
                 pid_update_parameters(pid, &pid_param);
                 start_new_task = true; ///< Set the flag to start a new task
@@ -383,6 +395,7 @@ void uart_task(void* pvParameters) {
                 break;
             
             case 'I': ///< Move to the left (izquierda)
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
                 sscanf(data, "I%hu_%f", &goal_distance, &pid_param.set_point);
                 pid_param.set_point = -pid_param.set_point;
                 pid_update_parameters(pid, &pid_param);

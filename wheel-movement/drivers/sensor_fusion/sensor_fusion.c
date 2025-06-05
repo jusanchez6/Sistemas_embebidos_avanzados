@@ -49,7 +49,7 @@ void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_
         imu_data->window[win_size - 1] = vel; ///< Store the velocity in the window
     }
 
-    printf("IMU Velocity: %0.2f cm/s\tAcceleration: %0.2f m/s^2\tPrev Acceleration: %0.2f\n", imu_data->velocity, acceleration, imu_data->prev_acc); ///< Log message
+    // printf("IMU Velocity: %0.2f cm/s\tAcceleration: %0.2f m/s^2\tPrev Acceleration: %0.2f\n", imu_data->velocity, acceleration, imu_data->prev_acc); ///< Log message
     
     imu_data->prev_acc = acceleration; ///< Update the previous acceleration value
 }
@@ -63,7 +63,7 @@ void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float
 
     // printf("Angle: %0.2f r\tLast Angle: %0.2f r\tDistance: %0.2f cm\t", angle, encoder_data->angle_prev, dist); ///< Log message
 
-    if(dist < 1){ ///< If angle (in radians) difference is not too big
+    if(dist < 1 && encoder_data->estimate){ ///< If angle (in radians) difference is not too big
         encoder_data->distance += dist; ///< Store the distance
         float vel =  dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
         encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * vel; ///< Pass the velocity through a low-pass filter
