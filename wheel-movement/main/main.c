@@ -97,8 +97,8 @@
 
 ///<-------------- PID configuration -----------------
 #define PID_KP 1.66f
-#define PID_KI 0.6f
-#define PID_KD 0.05f /*1.8f*/
+#define PID_KI .0f//0.6f
+#define PID_KD .0f//0.05f /*1.8f*/
 #define EULER 2.71828
 #define PI 3.14159
 #define SAMPLE_RATE 100 // Hz (10ms per sample)
@@ -123,8 +123,8 @@ pid_parameter_t pid_param = {
     .kp = PID_KP,
     .ki = PID_KI,
     .kd = PID_KD,
-    .max_output = 40.0f,
-    .min_output = -40.0f,
+    .max_output = 60.0f,
+    .min_output = -60.0f,
     .set_point = 2.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
@@ -272,11 +272,13 @@ void control_task( void * pvParameters ){
         //         angle,                distance,        acceleration[0]); ///< Log message
         // printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\n", 
         //        encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
+        printf("ENC Angle: %0.4f degrees\tDistance: %0.4f cm\tVelocity: %0.4f cm/s\n", 
+               angle,         encoder_data.distance, encoder_data.velocity); ///< Log message
         ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
         // Low-pass filter
-        est_velocity = estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
+        est_velocity = encoder_data.velocity;//estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
 
         est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity;
         last_est_velocity = est_velocity;
@@ -378,6 +380,8 @@ void uart_task(void* pvParameters) {
                 sscanf(data, "D%hu_%f", &goal_distance, &pid_param.set_point);
                 pid_update_parameters(pid, &pid_param);
                 start_new_task = true; ///< Set the flag to start a new task
+                encoder_data.distance = 0; ///< Set the distance to 0
+                encoder_data.last_vel = 0; ///< Reset the last velocity
                 printf("Moving to the right with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, pid_param.set_point);
                 break;
             
@@ -386,6 +390,8 @@ void uart_task(void* pvParameters) {
                 pid_param.set_point = -pid_param.set_point;
                 pid_update_parameters(pid, &pid_param);
                 start_new_task = true; ///< Set the flag to start a new task
+                encoder_data.distance = 0; ///< Set the distance to 0
+                encoder_data.last_vel = 0; ///< Reset the last velocity
                 printf("Moving to the left with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, -pid_param.set_point);
                 break;
             

@@ -21,6 +21,7 @@ void sf_init(imu_data_t *imu_data, encoder_data_t *encoder_data, lidar_data_t *l
     encoder_data->last_vel = 0.0f; ///< Initialize last velocity to 0
     encoder_data->angle_prev = 0.0f; ///< Initialize previous angle to 0
     encoder_data->radio = 3.0f; ///< Initialize radio to 3 cm
+    encoder_data->distance = 0.0f; ///< Initialize distance to 0
 
     // Initialize the Lidar data structure
     lidar_data->velocity = 0.0f; ///< Initialize velocity to 0
@@ -49,7 +50,7 @@ void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_
         imu_data->window[win_size - 1] = vel; ///< Store the velocity in the window
     }
 
-    printf("IMU Velocity: %0.2f cm/s\tAcceleration: %0.2f m/s^2\tPrev Acceleration: %0.2f\n", imu_data->velocity, acceleration, imu_data->prev_acc); ///< Log message
+    // printf("IMU Velocity: %0.2f cm/s\tAcceleration: %0.2f m/s^2\tPrev Acceleration: %0.2f\n", imu_data->velocity, acceleration, imu_data->prev_acc); ///< Log message
     
     imu_data->prev_acc = acceleration; ///< Update the previous acceleration value
 }
@@ -60,13 +61,14 @@ void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float
     // where dt is the time interval between measurements
     angle = angle * 3.1415 / 180; ///< Convert angle to radians
     float dist = fabsf(angle - encoder_data->angle_prev) * encoder_data->radio; ///< Calculate the distance in cm
+    int8_t sign = (angle - encoder_data->angle_prev) < 0 ? -1 : 1; ///< Determine the sign of the angle difference
 
     // printf("Angle: %0.2f r\tLast Angle: %0.2f r\tDistance: %0.2f cm\t", angle, encoder_data->angle_prev, dist); ///< Log message
 
-    if(dist < 1){ ///< If angle (in radians) difference is not too big
-        encoder_data->distance += dist; ///< Store the distance
-        float vel =  dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
-        encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * vel; ///< Pass the velocity through a low-pass filter
+    if(dist < 1){ ///< If distance is between 0.1 cm and 1 cm update the velocity
+        if(dist > 0.15) encoder_data->distance += dist; ///< Store the distance
+        float vel =  sign * dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
+        encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * sign * vel; ///< Pass the velocity through a low-pass filter
 
         // printf("ENC New Angle: %0.2f r\tLast Angle %0.2f r\tDistance: %0.2f cm\tVelocity: %0.2f\n",
         //     angle, encoder_data->angle_prev, encoder_data->distance, encoder_data->velocity); ///< Log message
