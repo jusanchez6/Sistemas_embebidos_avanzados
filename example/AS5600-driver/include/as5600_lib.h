@@ -29,8 +29,6 @@
 #include "as5600_defs.h"
 #include "platform_esp32s3.h"
 
-static const char* TAG_AS5600 = "AS5600";
-
 #define VCC_3V3_MV          3300        /*!< VCC in mV */
 #define VCC_3V3_MIN_RR_MV   330         /*!< VCC minimum range in mV -> 10% of VCC */
 #define VCC_3V3_MAX_RR_MV   2970        /*!< VCC maximum range in mV -> 90% of VCC */
@@ -39,10 +37,7 @@ static const char* TAG_AS5600 = "AS5600";
 #define ADC_TO_VOLTAGE(val) MAP(val, 0, AS5600_ADC_RESOLUTION_12_BIT, 0, VCC_3V3_MV) /*!< ADC to voltage conversion */
 #define LIMIT(a, min, max) (a < min ? min : (a > max ? max : a)) /*!< Limit a value between min and max */
 
-#ifndef I2C_MASTER_FREQ_HZ
-    #define I2C_MASTER_FREQ_HZ  400*1000    /*!< I2C master clock frequency */
-#endif
-
+#define I2C_MASTER_FREQ_HZ  400*1000    /*!< I2C master clock frequency */
 #define AS5600_SENSOR_ADDR  0x36        /*!< slave address for AS5600 sensor */
 
 typedef struct
@@ -61,7 +56,12 @@ typedef struct
 /**
  * @brief Initialize the I2C master driver
  * 
+ * @param pointer to the AS5600 structure
  * @param i2c_num I2C port number
+ * @param scl GPIO Number for I2C SCL
+ * @param sda GPIO Number for I2C SDA
+ * @param out GPIO Number for OUT pin
+ * 
  */
 void AS5600_Init(AS5600_t *as5600, i2c_port_t i2c_num, uint8_t scl, uint8_t sda, uint8_t out);
 
@@ -294,5 +294,6 @@ void AS5600_GetAgc(AS5600_t *as5600, uint8_t *agc);
  */
 void AS5600_GetMagnitude(AS5600_t *as5600, uint16_t *magnitude);
 
+bool AS5600_IsMagnetDetected(AS5600_t *as5600);
 
 #endif // __AS5600_H__

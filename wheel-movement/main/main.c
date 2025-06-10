@@ -60,7 +60,7 @@
 #define SAMPLE_TIME 10 ///< Sample time in ms
 
 ///<---------- Main mode: ------------------------
-#define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration
+#define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration, 2 AS5600 PROBE
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
@@ -171,7 +171,7 @@ void app_main(void)
     bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
     ///<--------------------------------------------------
 
-    // vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
+    vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
 
     ///<------------- Initialize the AS5600 sensor -------
     AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
@@ -184,19 +184,20 @@ void app_main(void)
         .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
         .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
         .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
-        .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+        .WD = AS5600_WATCHDOG_OFF, ///< Watchdog on
     };
     AS5600_SetConf(&gAs5600, conf);
     
     // Read the configuration
     uint16_t conf_reg;
     AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
-    printf("Configuration register read: 0x%04X\n", conf_reg);
-    printf("Configuration register written: 0x%04X\n", conf.WORD);
+    if (conf_reg != conf.WORD) {
+        ESP_LOGI(TAG_AS5600, "AS5600 configuration failed");
+    }
+    else {
+        ESP_LOGI(TAG_AS5600, "AS5600 configuration successful");
+    }
 
-    AS5600_ReadReg(&gAs5600, AS5600_REG_STATUS, &conf_reg);
-
-    printf("Status register read: 0x%02X\n", conf_reg);
 
     AS5600_SetStartPosition(&gAs5600, 0x0000); ///< Set the start position to 0
     AS5600_SetStopPosition(&gAs5600, 0x0FFF); ///< Set the stop position to 4095
@@ -268,11 +269,19 @@ void control_task( void * pvParameters ){
         ///<--------------------------------------------------
 
         ///<-------------- Log the data ----------------------
-        // printf("Angle: %0.2f degrees\tDistance: %d mm\tAcceleration: X: %0.2f m/s^2\n",
-        //         angle,                distance,        acceleration[0]); ///< Log message
-        printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\t", 
-               encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
-        ///<--------------------------------------------------
+        // ESP_LOGI("DATA", "Velocidad: %.2f cm/s\tDistance: %.2f cm\tAcceleration: X: %.2f m/s^2",
+        //      encoder_data.velocity, encoder_data.distance, acceleration[0]);
+
+        ESP_LOGI("DATA", "IMU Velocity: %.2f cm/s\t IMU Aceleration: %.2f",
+             imu_data.velocity, acceleration[0]);
+        
+        // ESP_LOGI("DATA", "IMU Velocity: %.4f cm/s\tLidar Velocity: %.4f cm/s\tEncoder Velocity: %.4f cm/s",
+        //      imu_data.velocity, lidar_data.velocity, encoder_data.velocity);
+
+
+        // ESP_LOGI("DATA", "VEL Encoder: %.4f cm/s\tIMU: %.4f cm/s\tLidar: %.4f cm/s",
+        //      encoder_data.velocity, imu_data.velocity, lidar_data.velocity);
+        // ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
         // Low-pass filter
@@ -292,13 +301,14 @@ void control_task( void * pvParameters ){
 
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
-            if (temp_ctr < 1500) {
+            if (temp_ctr < 1000) {
                 temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
                 bldc_set_duty(&pwm, duty);
                 // printf("Updated duty cycle: %hd\n", duty);
             } else {
                 temp_ctr = 0; ///< Reset the temporary counter
                 bldc_set_duty(&pwm, 0);
+                encoder_data.estimate = 0; ///< Reset the flag
                 move_one_time = false; ///< Reset the flag
             }
         }
@@ -311,12 +321,13 @@ void control_task( void * pvParameters ){
             reached_goal = false; ///< Reset the flag
         }
 
-        float est_dist = (encoder_data.distance + abs(distance - lidar_data.start_distance)) * 0.5f;
-        printf("DIST Encoder: %.2f cm\t Lidar: %hu cm\tEstimated: %.2f cm\n",
-                encoder_data.distance, abs(distance - lidar_data.start_distance), est_dist); ///< Log message
+        float est_dist = encoder_data.distance /*+ fabsf(distance - lidar_data.start_distance)) * 0.5f*/;
+        // printf("DIST Encoder: %.2f cm\t Lidar: %hu cm\tEstimated: %.2f cm\n",
+        //         encoder_data.distance, fabsf(distance - lidar_data.start_distance), est_dist); ///< Log message
 
         if ((est_dist > goal_distance && !reached_goal) || distance < 70 || distance > 2000) {
             bldc_set_duty(&pwm, 0); ///< Stop the motor
+            encoder_data.estimate = 0; ///< Reset the flag
 
             reached_goal = true; ///< Set the flag to true
 
@@ -364,6 +375,9 @@ void uart_task(void* pvParameters) {
             case 'X': ///< Change the duty cycle
                 sscanf(data, "X %hd", &duty);
                 move_one_time = true; ///< Set the flag to move a bit
+                encoder_data.distance = 0; ///< Set the distance to 0
+                encoder_data.last_vel = 0; ///< Reset the last velocity
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
                 break;
 
             case 'S': ///< Change the setpoint
@@ -373,6 +387,7 @@ void uart_task(void* pvParameters) {
                 break;
 
             case 'D': ///< Move to the right (derecha)
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
                 sscanf(data, "D%hu_%f", &goal_distance, &pid_param.set_point);
                 pid_update_parameters(pid, &pid_param);
                 start_new_task = true; ///< Set the flag to start a new task
@@ -380,6 +395,7 @@ void uart_task(void* pvParameters) {
                 break;
             
             case 'I': ///< Move to the left (izquierda)
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
                 sscanf(data, "I%hu_%f", &goal_distance, &pid_param.set_point);
                 pid_param.set_point = -pid_param.set_point;
                 pid_update_parameters(pid, &pid_param);
@@ -454,4 +470,69 @@ void app_main(void)
     }
     
 }
+#endif
+
+
+#if MAIN_MODE == 3
+
+const char *TAG = "AS5600";
+AS5600_t gAs5600;     ///< AS5600 object for angle sensor
+
+
+
+void app_main(void)
+{
+
+    ///< ---------------------- AS5600 -------------------
+    AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
+
+    
+    // Set some configurations to the AS5600
+    AS5600_config_t conf = {
+        .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
+        .HYST = AS5600_HYSTERESIS_OFF, ///< Hysteresis off
+        .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
+        .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
+        .SF = AS5600_SLOW_FILTER_16X, ///< Slow filter 16x
+        .FTH = AS5600_FF_THRESHOLD_SLOW_FILTER_ONLY, ///< Slow filter only
+        .WD = AS5600_WATCHDOG_ON, ///< Watchdog on
+    };
+    AS5600_SetConf(&gAs5600, conf);
+    
+
+    ESP_LOGI(TAG, "Configuration: 0x%04X", conf.WORD); ///< Read the configuration register
+    
+    // Read the configuration
+    uint16_t conf_reg;
+    AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
+
+    
+    if (conf_reg != conf.WORD)
+    {
+        ESP_LOGE(TAG, "Configuration error: 0x%04X", conf_reg); ///< Configuration error
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Configuration OK"); ///< Configuration OK
+    }
+    
+    vTaskDelay(10000 / portTICK_PERIOD_MS); ///< Delay 1 second
+    // calibration:
+
+    AS5600_SetStartPosition(&gAs5600, 0); ///< Set the start position to 0 degrees
+    AS5600_SetStopPosition(&gAs5600, 4095); ///< Set the end position to 360 degrees
+    AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
+
+    vTaskDelay(10000 / portTICK_PERIOD_MS); ///< Delay 1 second
+    
+    while (true)
+    {
+        ESP_LOGI(TAG, "AS5600 angle: %0.2f", AS5600_ADC_GetAngle(&gAs5600)); ///< Get the angle from the ADC
+        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Delay 1 second
+    }
+    
+}
+
+
+
 #endif

@@ -15,8 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 
-#define WIN_SIZE 35 ///< Size of the window for sampling
+#define WIN_SIZE 25 ///< Size of the window for sampling
 
 typedef struct
 {
@@ -29,12 +30,12 @@ typedef struct
 typedef struct
 {
     float velocity; // Velocity in cm/s
+    float last_vel; // Last velocity in cm/s
     float angle_prev; // Angle in degrees
     float radio;
 
     float distance; // Distance in cm
-
-    float window[WIN_SIZE]; // Window for sampling
+    bool estimate; // Flag to indicate if the estimate is valid
 } encoder_data_t;
 
 typedef struct
