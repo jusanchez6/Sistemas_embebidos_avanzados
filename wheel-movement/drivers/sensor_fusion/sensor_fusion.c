@@ -60,15 +60,15 @@ void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float
     // v(t) = (angle(t) - angle(t-1)) * radio / dt
     // where dt is the time interval between measurements
     angle = angle * 3.1415 / 180; ///< Convert angle to radians
-    float dist = fabsf(angle - encoder_data->angle_prev) * encoder_data->radio; ///< Calculate the distance in cm
-    int8_t sign = (angle - encoder_data->angle_prev) < 0 ? -1 : 1; ///< Determine the sign of the angle difference
+    float dist = -(angle - encoder_data->angle_prev) * encoder_data->radio; ///< Calculate the distance in cm
 
     // printf("Angle: %0.2f r\tLast Angle: %0.2f r\tDistance: %0.2f cm\t", angle, encoder_data->angle_prev, dist); ///< Log message
 
-    if(dist < 1){ ///< If distance is between 0.1 cm and 1 cm update the velocity
-        if(dist > 0.15) encoder_data->distance += dist; ///< Store the distance
-        float vel =  sign * dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
-        encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * sign * vel; ///< Pass the velocity through a low-pass filter
+    if(fabsf(dist) < 1){ ///< If distance is between 0.1 cm and 1 cm update the velocity
+        if(fabsf(dist) > 0.15) encoder_data->distance += fabsf(dist); ///< Store the distance
+        float vel =  dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
+        encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * vel; ///< Pass the velocity through a low-pass filter
+        printf("ENC Dist: %0.2f\tVelocity: %0.2f cm/s\n", dist, encoder_data->velocity); ///< Log message
 
         // printf("ENC New Angle: %0.2f r\tLast Angle %0.2f r\tDistance: %0.2f cm\tVelocity: %0.2f\n",
         //     angle, encoder_data->angle_prev, encoder_data->distance, encoder_data->velocity); ///< Log message

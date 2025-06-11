@@ -96,9 +96,9 @@
 ///<--------------------------------------------------
 
 ///<-------------- PID configuration -----------------
-#define PID_KP 1.66f
-#define PID_KI .0f//0.6f
-#define PID_KD .0f//0.05f /*1.8f*/
+#define PID_KP .5f//1.66f
+#define PID_KI 200.0f//0.6f
+#define PID_KD .005f//0.05f /*1.8f*/
 #define EULER 2.71828
 #define PI 3.14159
 #define SAMPLE_RATE 100 // Hz (10ms per sample)
@@ -123,8 +123,8 @@ pid_parameter_t pid_param = {
     .kp = PID_KP,
     .ki = PID_KI,
     .kd = PID_KD,
-    .max_output = 60.0f,
-    .min_output = -60.0f,
+    .max_output = 30.0f,
+    .min_output = -30.0f,
     .set_point = 2.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
@@ -272,8 +272,9 @@ void control_task( void * pvParameters ){
         //         angle,                distance,        acceleration[0]); ///< Log message
         // printf("VEL Encoder: %0.4f cm/s\tIMU: %0.4f cm/s\tLidar: %0.4f cm/s\n", 
         //        encoder_data.velocity,    imu_data.velocity, lidar_data.velocity); ///< Log message
-        printf("ENC Angle: %0.4f degrees\tDistance: %0.4f cm\tVelocity: %0.4f cm/s\n", 
-               angle,         encoder_data.distance, encoder_data.velocity); ///< Log message
+        // printf("ENC Angle: %0.4f degrees\tDistance: %0.4f cm\tVelocity: %0.4f cm/s\n", 
+        //        angle,         encoder_data.distance, encoder_data.velocity); ///< Log message
+        // printf("%d,%0.4f\n",duty,encoder_data.velocity); ///< Log message
         ///<--------------------------------------------------
 
         ///<-------------- PID Control ---------------
@@ -294,7 +295,7 @@ void control_task( void * pvParameters ){
 
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
-            if (temp_ctr < 1000) {
+            if (temp_ctr < 2000) {
                 temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
                 bldc_set_duty(&pwm, duty);
                 // printf("Updated duty cycle: %hd\n", duty);
