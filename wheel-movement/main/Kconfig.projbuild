@@ -1,0 +1,120 @@
+menu "Configuración del Proyecto"
+
+config SAMPLE_TIME
+    int "Sample time (ms)"
+    default 10
+
+config MAIN_MODE
+    int "Modo principal (0=Normal, 1=Calibración ESC, 2=Sonda AS5600)"
+    range 0 2
+    default 0
+
+menu "AS5600"
+    config AS5600_I2C_MASTER_SCL_GPIO
+        int "GPIO SCL"
+        default 5
+
+    config AS5600_I2C_MASTER_SDA_GPIO
+        int "GPIO SDA"
+        default 4
+
+    config AS5600_OUT_GPIO
+        int "GPIO OUT"
+        default 6
+
+    config AS5600_I2C_MASTER_NUM
+        int "Número de puerto I2C"
+        default 0
+
+    config AS5600_MODE
+        int "Modo (0=Calibración, 1=Ángulo ADC)"
+        range 0 1
+        default 1
+endmenu
+
+menu "TM151"
+    config TM151_UART_TX
+        int "GPIO UART TX"
+        default 17
+
+    config TM151_UART_RX
+        int "GPIO UART RX"
+        default 18
+
+    config TM151_UART_BAUDRATE
+        int "Baudrate UART"
+        default 115600
+
+    config TM151_BUFFER_SIZE
+        int "Tamaño del buffer UART"
+        default 1024
+endmenu
+
+menu "VL53L1X"
+    config VL53L1X_I2C_PORT
+        int "Puerto I2C"
+        default 1
+
+    config VL53L1X_SDA_GPIO
+        int "GPIO SDA"
+        default 41
+
+    config VL53L1X_SCL_GPIO
+        int "GPIO SCL"
+        default 42
+endmenu
+
+menu "PWM/BLDC"
+    config PWM_GPIO
+        int "GPIO PWM"
+        default 20
+
+    config PWM_REV_GPIO
+        int "GPIO PWM Reverse"
+        default 21
+
+    config PWM_FREQ
+        int "Frecuencia PWM (Hz)"
+        default 50
+
+    config PWM_RESOLUTION
+        int "Resolución PWM"
+        default 100000
+
+    config MAX_PWM_CAL
+        int "PWM máximo (cal)"
+        default 120
+
+    config MIN_PWM_CAL
+        int "PWM mínimo (cal)"
+        default 35
+
+    config MAX_PWM_RE
+        int "PWM máximo (RE)"
+        default 119
+
+    config MIN_PWM_RE
+        int "PWM mínimo (RE)"
+        default 38
+endmenu
+
+
+menu "WiFi"
+    config WIFI_SSD
+        string "WiFi SSID"
+        default "your_wifi_ssid"
+
+    config WIFI_PASS
+        string "WiFi password"
+        default "your_wifi_password"
+
+    config WIFI_MAX_RETRY
+        int "Máximo de reintentos WiFi"
+        default 5
+
+    config PORT
+        int "Puerto del servidor TCP"
+        default 8080
+endmenu
+
+endmenu
