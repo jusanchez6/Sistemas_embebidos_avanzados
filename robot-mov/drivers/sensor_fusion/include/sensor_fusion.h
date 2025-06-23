@@ -66,7 +66,7 @@ void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_
  * @param angle Current angle value (degrees)
  * @param time_interval Time interval between measurements (s)
  */
-void estimate_velocity_encoder(encoder_data_t *encoder_data, float angle, float time_interval);
+void estimate_velocity_encoder(encoder_data_t *encoder_data);
 
 /**
  * @brief Estimate the distance using Lidar data
