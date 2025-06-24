@@ -23,11 +23,11 @@
 #define SAMPLE_TIME 2 ///< Sample time in ms
 #define WHEEL_RADIO 3.0f ///< Radio of the wheel in cm
 
-///<-------------- AS5600 configuration ---------------
-#define AS5600_I2C_MASTER_SCL_GPIO 5    ///< gpio number for I2C master clock
-#define AS5600_I2C_MASTER_SDA_GPIO 4    ///< gpio number for I2C master data 
-#define AS5600_OUT_GPIO 6               ///< gpio number for OUT signal
-#define AS5600_I2C_MASTER_NUM 0         ///< I2C port number for master dev
+///<-------------- AS5600 configuration --------------
+#define AS5600_OUT_GPIO_RIGHT 6         ///< gpio number for right OUT signal
+#define AS5600_OUT_GPIO_LEFT 7          ///< gpio number for left OUT signal
+#define AS5600_OUT_GPIO_BACK 8          ///< gpio number for back OUT signal
+#define AS5600_ADC_UNIT_ID ADC_UNIT_1   ///< I2C port number for master dev
 #define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
 ///<--------------------------------------------------
 

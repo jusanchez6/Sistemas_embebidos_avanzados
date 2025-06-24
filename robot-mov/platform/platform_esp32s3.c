@@ -348,6 +348,51 @@ err:
     return false;
 }
 
+bool adc_create_unit(adc_oneshot_unit_handle_t *handle, uint8_t unit_id)
+{    
+    adc_oneshot_unit_init_cfg_t init_config = {
+        .unit_id = unit_id
+    };
+    return adc_oneshot_new_unit(&init_config, handle) == ESP_OK;
+}
+
+bool adc_config_channel(adc_t *adc, uint8_t gpio, uint8_t unit_id)
+{    
+    esp_err_t ret = ESP_OK;
+    adc_oneshot_unit_handle_t adc_handle = adc->adc_handle;
+    adc->gpio_out = gpio;
+    adc->unit = unit_id;
+
+    ESP_GOTO_ON_ERROR(adc_oneshot_io_to_channel(adc->gpio_out, &adc->unit, &adc->chan), err, TAG_ADC, "adc io to channel failed");
+    ESP_LOGI(TAG_ADC, "ADC channel: %d", adc->chan);
+
+    // ADC Config
+    adc_oneshot_chan_cfg_t config = {
+        .atten = ADC_ATTEN,
+        .bitwidth = ADC_BIT_WIDTH,
+    };
+    ESP_GOTO_ON_ERROR(adc_oneshot_config_channel(adc_handle, adc->chan, &config), err, TAG_ADC, "adc config failed");
+
+    // ADC calibration 
+    adc_cali_handle_t cali_handle = NULL;
+    adc_cali_curve_fitting_config_t cali_config = {
+        .unit_id = unit_id,
+        .chan = adc->chan,
+        .atten = ADC_ATTEN,
+        .bitwidth = ADC_BIT_WIDTH,
+    };
+    adc->is_calibrated = false;
+    ESP_GOTO_ON_ERROR(adc_cali_create_scheme_curve_fitting(&cali_config, &cali_handle), err, TAG_ADC, "adc calibration failed");
+    
+    adc->is_calibrated = true;
+    adc->adc_cali_handle = cali_handle;
+
+    return true;
+
+err:
+    return false;
+}
+
 void adc_read_raw(adc_t *adc, int *raw)
 {
     ESP_ERROR_CHECK(adc_oneshot_read(adc->adc_handle, adc->chan, raw));

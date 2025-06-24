@@ -82,14 +82,43 @@ void app_main(void)
     bldc_set_duty(&pwmB, 0); ///< Set the duty cycle to 0%
     ///<--------------------------------------------------
 
-    ///<------------- Initialize the AS5600 sensor -------
-    AS5600_Init(&gAs5600R, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO); ///< Initialize the AS5600 sensor for right wheel
-    AS5600_Init(&gAs5600L, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO + 1); ///< Initialize the AS5600 sensor for left wheel
-    AS5600_Init(&gAs5600B, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO + 2); ///< Initialize the AS5600 sensor for back wheel
+    ///<---------- Initialize the AS5600 sensors ---------
+    AS5600_config_t conf = {
+        .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
+        .HYST = AS5600_HYSTERESIS_2LSB, ///< Hysteresis 2LSB
+        .OUTS = AS5600_OUTPUT_STAGE_ANALOG_RR, ///< Analog output 10%-90%
+        .PWMF = AS5600_PWM_FREQUENCY_115HZ, ///< PWM frequency 115Hz
+        .SF = AS5600_SLOW_FILTER_8X, ///< Slow filter 8x
+        .FTH = AS5600_FF_THRESHOLD_6LSB, ///< Fast filter threshold 6LSB
+        .WD = AS5600_WATCHDOG_OFF, ///< Watchdog off
+    };
 
-    AS5600_InitADC(&gAs5600R); ///< Initialize the ADC driver for the right AS5600 sensor
-    AS5600_InitADC(&gAs5600L); ///< Initialize the ADC driver for the left AS5600 sensor
-    AS5600_InitADC(&gAs5600B); ///< Initialize the ADC driver for the back AS5600 sensor
+    adc_oneshot_unit_handle_t handle;
+    if (!adc_create_unit(&handle, AS5600_ADC_UNIT_ID)) {
+        ESP_LOGE("AS5600_ADC_UNIT", "AS5600 ADC initialization failed.\n");
+        return;
+    }
+
+    gAs5600R.conf = conf; ///< Set the configuration for the right AS5600 sensor
+    gAs5600R.out = AS5600_OUT_GPIO_RIGHT; ///< Set the OUT GPIO pin for the right AS5600 sensor
+    gAs5600R.adc_handle.adc_handle = handle; ///< Set the ADC handle for the right AS5600 sensor
+    if (!adc_config_channel(&gAs5600R.adc_handle, AS5600_OUT_GPIO_RIGHT, AS5600_ADC_UNIT_ID)) {
+        ESP_LOGE("AS5600_ADC_CH", "AS5600 right sensor ADC initialization failed\n");
+    }
+    
+    gAs5600L.conf = conf; ///< Set the configuration for the left AS5600 sensor
+    gAs5600L.out = AS5600_OUT_GPIO_LEFT; ///< Set the OUT
+    gAs5600L.adc_handle.adc_handle = handle; ///< Set the ADC handle for the left AS5600 sensor
+    if (!adc_config_channel(&gAs5600L.adc_handle, AS5600_OUT_GPIO_LEFT, AS5600_ADC_UNIT_ID)) {
+        ESP_LOGE("AS5600_ADC_CH", "AS5600 left sensor ADC initialization failed\n");
+    }
+
+    gAs5600B.conf = conf; ///< Set the configuration for the back AS5600 sensor
+    gAs5600B.out = AS5600_OUT_GPIO_BACK; ///< Set the OUT GPIO pin for the back AS5600 sensor
+    gAs5600B.adc_handle.adc_handle = handle; ///< Set the ADC handle for the back AS5600 sensor
+    if (!adc_config_channel(&gAs5600B.adc_handle, AS5600_OUT_GPIO_BACK, AS5600_ADC_UNIT_ID)) {
+        ESP_LOGE("AS5600_ADC_CH", "AS5600 back sensor ADC initialization failed\n");
+    }
     ///<--------------------------------------------------
     
     ///<-------------- Initialize the TM151 sensor ------
