@@ -69,8 +69,10 @@
 #define AS5600_OUT_GPIO 6               ///< gpio number for OUT signal
 #define AS5600_I2C_MASTER_NUM 0         ///< I2C port number for master dev
 #define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
-///<--------------------------------------------------
-
+// <------------------------------------------------
+#define AS5600_OUT_GPIO_1 6               ///< gpio number for OUT signal
+#define AS5600_OUT_GPIO_2 7               ///< gpio number for OUT signal
+#define AS5600_OUT_GPIO_3 8               ///< gpio number for OUT signal
 ///<------------- TM151 configuration ----------------
 #define TM151_UART_TX 17                          ///< Gpio pin for UART TX
 #define TM151_UART_RX 18                          ///< GPIO pin for UART RX
@@ -154,6 +156,11 @@ bldc_pwm_motor_t pwm; ///< BLDC motor object
 AS5600_t gAs5600;     ///< AS5600 object for angle sensor
 vl53l1x_t gVl53l1x;   ///< VL53L1X object for distance sensor
 uart_t myUART;        ///< UART object for TM151 IMU
+///<--------------------------------------------------
+AS5600_Group_t gAs5600_Group_t; ///< AS5600 Group object
+BLDC_PWM_Group_t gBldcPwmGroup; ///< BLDC_PWM Group object
+VL53L1X_Group_t gVl53l1x_Group_t; ///< VL53L1X Group object
+///<--------------------------------------------------
 float angle;          ///< Angle read from the AS5600 sensor
 float angle_1;          ///< Angle read from the AS5600 sensor
 float angle_2;          ///< Angle read from the AS5600 sensor
@@ -169,7 +176,7 @@ static volatile pid_block_handle_t pid_3; // PID_3 control block handle
 
 uint32_t temp_ctr = 0; ///< Temporary counter to stop move_one_time
 
-pid_parameter_t pid_param = {
+/* pid_parameter_t pid_param = {
     .kp = PID_KP,
     .ki = PID_KI,
     .kd = PID_KD,
@@ -178,7 +185,7 @@ pid_parameter_t pid_param = {
     .set_point = 2.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
-};
+}; */
 
 pid_parameter_t pid_param_1 = {
     .kp = PID_KP,
@@ -243,11 +250,11 @@ void app_main(void)
     VL53L1X_setDistanceMode(&gVl53l1x, Short); 
     VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
     VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
+    setAddress(&VL53L1X_Group_t.gAs5600_1, NewAddress); */
     vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms */
     ///<--------------------------------------------------
-// --- Sensor 1 ---
 if (!VL53L1X_init(
-        &VL53L1X_Group_t.gAs5600_1,
+        &gVL53L1X_Group_t.gAs5600_1,
         VL53L1X_I2C_PORT,
         VL53L1X_SCL_GPIO_1,
         VL53L1X_SDA_GPIO_1,
@@ -256,28 +263,78 @@ if (!VL53L1X_init(
     return;
 }
 VL53L1X_setDistanceMode(
-    &VL53L1X_Group_t.gAs5600_1,
+    &gVL53L1X_Group_t.gAs5600_1,
     Short);
 VL53L1X_setMeasurementTimingBudget(
-    &VL53L1X_Group_t.gAs5600_1,
+    &gVL53L1X_Group_t.gAs5600_1,
     20000);
 VL53L1X_startContinuous(
-    &VL53L1X_Group_t.gAs5600_1,
+    &gVL53L1X_Group_t.gAs5600_1,
     SAMPLE_TIME);
+setAddress(&gVL53L1X_Group_t.gAs5600_1, 0x30);
+
+if (!VL53L1X_init(
+        &gVL53L1X_Group_t.gAs5600_2,
+        VL53L1X_I2C_PORT,
+        VL53L1X_SCL_GPIO_2,
+        VL53L1X_SDA_GPIO_2,
+        0)) {
+    ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor 2");
+    return;
+}
+
+VL53L1X_setDistanceMode(
+    &gVL53L1X_Group_t.gAs5600_2,
+    Short);
+VL53L1X_setMeasurementTimingBudget(
+    &gVL53L1X_Group_t.gAs5600_2,
+    20000);
+VL53L1X_startContinuous(
+    &gVL53L1X_Group_t.gAs5600_2,
+    SAMPLE_TIME);
+setAddress(&gVL53L1X_Group_t.gAs5600_2, 0x30);
+
+if (!VL53L1X_init(
+        &gVL53L1X_Group_t.gAs5600_3,
+        VL53L1X_I2C_PORT,
+        VL53L1X_SCL_GPIO_3,
+        VL53L1X_SDA_GPIO_3,
+        0)) {
+    ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor 3");
+    return;
+}
+VL53L1X_setDistanceMode(
+    &gVL53L1X_Group_t.gAs5600_3,
+    Short);
+VL53L1X_setMeasurementTimingBudget(
+    &gVL53L1X_Group_t.gAs5600_3,
+    20000);
+VL53L1X_startContinuous(
+    &gVL53L1X_Group_t.gAs5600_3,
+    SAMPLE_TIME);
+setAddress(&gVL53L1X_Group_t.gAs5600_3, 0x30);
+
 vTaskDelay(500 / portTICK_PERIOD_MS);
 
     ///<----------- Initialize the BLDC motor PWM --------
     ESP_LOGI("PWM", "Starting test..."); ///< Log message
-    bldc_init(&pwm, PWM_GPIO, PWM_REV_GPIO, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
+   /*  bldc_init(&pwm, PWM_GPIO, PWM_REV_GPIO, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
     bldc_enable(&pwm); ///< Enable the BLDC motor
-    bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0%
+    bldc_set_duty(&pwm, 0); ///< Set the duty cycle to 0% */
+    bldc_init(&gBldcPwmGroup.pwm_1, PWM_GPIO_1, PWM_REV_GPIO_1, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
+    bldc_enable(&gBldcPwmGroup.pwm_1); ///< Enable the BLDC motor
+    bldc_set_duty(&gBldcPwmGroup.pwm_1, 0); ///< Set the duty cycle to 0%
+    bldc_init(&gBldcPwmGroup.pwm_2, PWM_GPIO_2, PWM_REV_GPIO_2, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
+    bldc_enable(&gBldcPwmGroup.pwm_2); ///< Enable the BLDC motor
+    bldc_set_duty(&gBldcPwmGroup.pwm_2, 0); ///< Set the duty cycle to 0%
+    bldc_init(&gBldcPwmGroup.pwm_3, PWM_GPIO_3, PWM_REV_GPIO_3, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
+    bldc_enable(&gBldcPwmGroup.pwm_3); ///< Enable the BLDC motor
+    bldc_set_duty(&gBldcPwmGroup.pwm_3, 0); ///< Set the duty cycle to 0%
+    ESP_LOGI("PWM", "BLDC motors initialized successfully"); ///< Log message
     ///<--------------------------------------------------
-
     vTaskDelay(4000 / portTICK_PERIOD_MS); ///< Wait for 4 seconds
-
     ///<------------- Initialize the AS5600 sensor -------
     AS5600_Init(&gAs5600, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO);
-
     // Set some configurations to the AS5600
     AS5600_config_t conf = {
         .PM = AS5600_POWER_MODE_NOM, ///< Normal mode
@@ -289,7 +346,6 @@ vTaskDelay(500 / portTICK_PERIOD_MS);
         .WD = AS5600_WATCHDOG_OFF, ///< Watchdog on
     };
     AS5600_SetConf(&gAs5600, conf);
-    
     // Read the configuration
     uint16_t conf_reg;
     AS5600_ReadReg(&gAs5600, AS5600_REG_CONF_H, &conf_reg);
@@ -305,6 +361,13 @@ vTaskDelay(500 / portTICK_PERIOD_MS);
     AS5600_SetStopPosition(&gAs5600, 0x0FFF); ///< Set the stop position to 4095
 
     AS5600_InitADC(&gAs5600); ///< Initialize the ADC driver
+    ///<--------------------------------------------------
+    AS5600_Init(&gAs5600_Group_t.gAs5600_1, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO_1); ///< Initialize the AS5600 sensor);
+    AS5600_InitADC(&gAs5600_Group_t.gAs5600_1); ///< Initialize the ADC driver
+    AS5600_Init(&gAs5600_Group_t.gAs5600_2, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO_2); ///< Initialize the AS5600 sensor);
+    AS5600_InitADC(&gAs5600_Group_t.gAs5600_2); ///< Initialize the ADC driver
+    AS5600_Init(&gAs5600_Group_t.gAs5600_3, AS5600_I2C_MASTER_NUM, AS5600_I2C_MASTER_SCL_GPIO, AS5600_I2C_MASTER_SDA_GPIO, AS5600_OUT_GPIO_3); ///< Initialize the AS5600 sensor);
+    AS5600_InitADC(&gAs5600_Group_t.gAs5600_3); ///< Initialize the ADC driver
     vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
     
@@ -317,12 +380,27 @@ vTaskDelay(500 / portTICK_PERIOD_MS);
         .init_param = pid_param
     };
 
+    pid_config_t pid_config_1 = {
+        .init_param = pid_param_1
+    };
+    pid_config_t pid_config_2 = {
+        .init_param = pid_param_2
+    };
+    pid_config_t pid_config_3 = {
+        .init_param = pid_param_3
+    };
+
     pid_new_control_block(&pid_config, &pid);
+    pid_new_control_block(&pid_config_1, &pid_1);
+    pid_new_control_block(&pid_config_2, &pid_2);
+    pid_new_control_block(&pid_config_3, &pid_3);
 
     ///<---------------------------------------------------
 
     sf_init(&imu_data, &encoder_data, &lidar_data); ///< Initialize the sensor fusion module
-
+/*     sf_init(&imu_data, &AS5600_Group_t.gAs5600_1, &VL53L1X_Group_t.gVl53l1x_1); ///< Initialize the sensor fusion module
+    sf_init(&imu_data, &AS5600_Group_t.gAs5600_2, &VL53L1X_Group_t.gVl53l1x_2); ///< Initialize the sensor fusion module
+    sf_init(&imu_data, &AS5600_Group_t.gAs5600_3, &VL53L1X_Group_t.gVl53l1x_3); ///< Initialize */
     ///<-------------- Create the task ---------------
     TaskHandle_t xControlTaskHandle = NULL, xUartTaskHandle = NULL; ///< Task handles
     xTaskCreate(control_task, "control_task", 4096, NULL, 10, &xControlTaskHandle); ///< Create the task to control the wheel
