@@ -58,18 +58,18 @@ void estimate_velocity_imu(imu_data_t *imu_data, float acceleration, float time_
     imu_data->prev_acc = acceleration; ///< Update the previous acceleration value
 }
 
-void estimate_velocity_encoder(encoder_data_t * encoder_data, float angle, float time_interval){
+void estimate_velocity_encoder(encoder_data_t * encoder_data){
     // Placeholder for velocity estimation logic
     // v(t) = (angle(t) - angle(t-1)) * radio / dt
     // where dt is the time interval between measurements
-    angle = angle * 3.1415 / 180; ///< Convert angle to radians
+    float angle = encoder_data->angle * 3.1415 / 180; ///< Convert angle to radians
     float dist = (angle - encoder_data->angle_prev) * encoder_data->radio; ///< Calculate the distance in cm
 
     // printf("Angle: %0.2f r\tLast Angle: %0.2f r\tDistance: %0.2f cm\t", angle, encoder_data->angle_prev, dist); ///< Log message
 
     if(fabsf(dist) < 1){ ///< If distance is between 0.1 cm and 1 cm update the velocity
         if(fabsf(dist) > 0.15) encoder_data->distance += fabsf(dist); ///< Store the distance
-        float vel =  dist / time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
+        float vel =  dist / encoder_data->time_interval, beta = 0.9f; ///< Calculate the velocity in cm/s
         encoder_data->velocity = beta * encoder_data->last_vel + (1 - beta) * vel; ///< Pass the velocity through a low-pass filter
         // printf("ENC Dist: %0.2f\tVelocity: %0.2f cm/s\n", dist, encoder_data->velocity); ///< Log message
 

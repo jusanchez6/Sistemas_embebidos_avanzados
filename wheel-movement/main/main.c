@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * 
- * @brief main file for obtaining data from sensors and controlle the wheels
+ * @brief main file for obtaining data from sensors and control the wheel
  * 
  * Main file for wheel modeling purposes, this code is used to get the data from the sensors AS5600, VL531Lx and TM151 
  * 
@@ -12,7 +12,7 @@
  * 
  * @date 14-05-2025
  * 
- * @version 1.0
+ * @version 4.2
  * 
  * @copyright Copyright (c) RoboCup SISTEMIC 2025 
  * 
@@ -72,6 +72,7 @@
 static const char *TAG = "WHEEL MOVEMENT"; ///< Tag for logging
 
 #define SAMPLE_TIME CONFIG_SAMPLE_TIME ///< Sample time in ms
+#define SAMPLE_TIME 2 ///< Sample time in ms
 
 ///<---------- Main mode: ------------------------
 #define MAIN_MODE CONFIG_MAIN_MODE ///< 0 = No Calibration, 1 = ESC Calibration, 2 AS5600 PROBE
@@ -110,12 +111,20 @@ static const char *TAG = "WHEEL MOVEMENT"; ///< Tag for logging
 ///<--------------------------------------------------
 
 ///<-------------- PID configuration -----------------
+<<<<<<< HEAD
 #define PID_KP 1.66f                //< PID Kp parameter
 #define PID_KI 0.6f                 //< PID Ki parameter
 #define PID_KD 0.05f                //< PID Kd parameter
 #define EULER 2.71828               //< Euler's number
 #define PI 3.14159                  //< Pi constant
 #define SAMPLE_RATE 100             //< Sample rate in Hz
+=======
+#define PID_KP .01f
+#define PID_KI .01f
+#define PID_KD .001f
+#define EULER 2.71828
+#define PI 3.14159
+>>>>>>> main
 ///<--------------------------------------------------
 
 
@@ -136,28 +145,57 @@ vl53l1x_t gVl53l1x;   ///< VL53L1X object for distance sensor
 uart_t myUART;        ///< UART object for TM151 IMU
 float angle;          ///< Angle read from the AS5600 sensor
 uint16_t distance, goal_distance;     ///< Distance read from the VL53L1X sensor
-bool reached_goal = true, start_new_task = false, move_one_time = false; ///< Flag to indicate if the goal distance is reached
+bool reached_goal = true, move_one_time = false; ///< Flag to indicate if the goal distance is reached
 int16_t duty;
 
 static volatile pid_block_handle_t pid; // PID control block handle
 
 uint32_t temp_ctr = 0; ///< Temporary counter to stop move_one_time
 
+typedef struct {
+    float encoder_velocity; ///< Velocity estimation from encoder in cm/s
+    float imu_velocity;     ///< Velocity estimation from IMU in cm/s
+    float lidar_velocity;   ///< Velocity estimation from Lidar in cm/s
+
+    float encoder_distance; ///< Distance estimation from encoder in cm
+} control_params_t;
+
 pid_parameter_t pid_param = {
     .kp = PID_KP,
     .ki = PID_KI,
     .kd = PID_KD,
-    .max_output = 40.0f,
-    .min_output = -40.0f,
-    .set_point = 2.0f,
+    .max_output = 70.0f,
+    .min_output = -70.0f,
+    .set_point = 0.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
 };
 
-
 imu_data_t imu_data;
 encoder_data_t encoder_data;
 lidar_data_t lidar_data;
+
+control_params_t control_params = {
+    .encoder_velocity = 0.0f,
+    .imu_velocity = 0.0f,
+    .lidar_velocity = 0.0f,
+    .encoder_distance = 0.0f
+};
+
+/**
+ * @brief Task to read from encoder
+ */
+void vTaskEncoder(void * pvParameters);
+
+/**
+ * @brief Task to read from IMU
+ */
+void vTaskIMU(void * pvParameters);
+
+/**
+ * @brief Task to read from Lidar
+ */
+void vTaskLidar(void * pvParameters);
 
 /**
  * @brief Movement flags for controlling a motor
@@ -189,14 +227,14 @@ union movement_flags
  * 
  * @param pvParameters 
  */
-void control_task( void * pvParameters );
+void vTaskControl( void * pvParameters );
 
 /**
  * @brief UART task to read data from console
  * 
  * @param pvParameters 
  */
-void uart_task(void * pvParameters);
+void vTaskUART(void * pvParameters);
 
 /**
  * @brief Initialize the WiFi station
@@ -285,15 +323,38 @@ void app_main(void)
     sf_init(&imu_data, &encoder_data, &lidar_data); ///< Initialize the sensor fusion module
 
     ///<-------------- Create the task ---------------
+
+    TaskHandle_t xEncoderTaskHandle = NULL, xIMUTaskHandle = NULL, xLidarTaskHandle = NULL; ///< Task handles
+    xTaskCreate(vTaskEncoder, "encoder_task", 2048, NULL, 9, &xEncoderTaskHandle); ///< Create the task to read from encoder
+    configASSERT(xEncoderTaskHandle); ///< Check if the task was created successfully
+    if (xEncoderTaskHandle == NULL) {
+        ESP_LOGE("ENCODER_TASK", "Failed to create task...");
+        return;
+    }
+
+    // xTaskCreate(vTaskIMU, "imu_task", 2048, NULL, 9, &xIMUTaskHandle); ///< Create the task to read from IMU
+    // configASSERT(xIMUTaskHandle); ///< Check if the task was created successfully
+    // if (xIMUTaskHandle == NULL) {
+    //     ESP_LOGE("IMU_TASK", "Failed to create task...");
+    //     return;
+    // }
+
+    // xTaskCreate(vTaskLidar, "lidar_task", 2048, NULL, 9, &xLidarTaskHandle); ///< Create the task to read from Lidar
+    // configASSERT(xLidarTaskHandle); ///< Check if the task was created successfully
+    // if (xLidarTaskHandle == NULL) {
+    //     ESP_LOGE("LIDAR_TASK", "Failed to create task...");
+    //     return;
+    // }
+
     TaskHandle_t xControlTaskHandle = NULL, xUartTaskHandle = NULL; ///< Task handles
-    xTaskCreate(control_task, "control_task", 4096, NULL, 10, &xControlTaskHandle); ///< Create the task to control the wheel
+    xTaskCreate(vTaskControl, "control_task", 4096, NULL, 9, &xControlTaskHandle); ///< Create the task to control the wheel
     configASSERT(xControlTaskHandle); ///< Check if the task was created successfully
     if (xControlTaskHandle == NULL) {
         ESP_LOGE("CTRL_TASK", "Failed to create task...");
         return;
     }
 
-    xTaskCreate(uart_task, "uart_task", 4096, NULL, 10, &xUartTaskHandle); ///< Create the task to read data from console
+    xTaskCreate(vTaskUART, "uart_task", 4096, NULL, 10, &xUartTaskHandle); ///< Create the task to read data from console
     configASSERT(xUartTaskHandle); ///< Check if the task was created successfully
     if (xUartTaskHandle == NULL) {
         ESP_LOGE("UART_TASK", "Failed to create task...");
@@ -303,69 +364,73 @@ void app_main(void)
 
 }
 
-// Task to control the wheel
-void control_task( void * pvParameters ){
+// Task to read from encoder
+void vTaskEncoder(void * pvParameters) {
+    ///<-------------- Get angle through ADC -------------
+    while (1) {
+        angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
+        estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
+        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 ms
+    }
+    ///<--------------------------------------------------
+}
 
+// Task to read from IMU
+void vTaskIMU(void * pvParameters) {
     float acceleration[3];
+    
+    while (1) {
+        // Read acceleration data from TM151 IMU
+        SerialPort_DataReceived_RawAcc(&myUART, acceleration);
+        
+        // Estimate the velocity using IMU data
+        estimate_velocity_imu(&imu_data, acceleration[0], SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using IMU data
+        
+        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 ms
+    }
+}
+
+// Task to read from Lidar
+void vTaskLidar(void * pvParameters) {
+    while (1) {
+        // Read distance data from VL53L1X sensor
+        distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
+        estimate_velocity_lidar(&lidar_data, distance, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using lidar data
+        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 ms
+    }
+}
+
+// Task to control the wheel
+void vTaskControl( void * pvParameters ){
 
     uint32_t timestamp = 1000000; // 1 second
     float est_velocity = 0.0f, last_est_velocity = 0.0f;
-    float beta = exp(-2 * PI * 1 / SAMPLE_RATE);  // 10Hz cutoff frequency
+    float beta = exp(-2 * PI * 1 / 100);  // 10Hz cutoff frequency
     float output = 0.0f;
 
     while (1)
     {
-        ///<-------------- Get angle through ADC -------------
-        angle = AS5600_ADC_GetAngle(&gAs5600); ///< Get the angle from the ADC
-        estimate_velocity_encoder(&encoder_data, angle, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using encoder data
-        // ///<--------------------------------------------------
-
-        // ///<-------------- Get distance through VL53L1X ------
-        distance = VL53L1X_readDistance(&gVl53l1x, 0); ///< Get the distance from the VL53L1X sensor
-        estimate_velocity_lidar(&lidar_data, distance, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using lidar data
-        ///<--------------------------------------------------
-
-        ///<-------------- Get data from TM151 --------------
-        SerialPort_DataReceived_RawAcc(&myUART, acceleration);
-        
-        float acc_1dp = (int)(acceleration[0] * 10);
-        estimate_velocity_imu(&imu_data, (float)acc_1dp / 10.0, SAMPLE_TIME / 1000.0f); ///< Estimate the velocity using IMU data
-        ///<--------------------------------------------------
-
-        ///<-------------- Log the data ----------------------
-        // ESP_LOGI("DATA", "Velocidad: %.2f cm/s\tDistance: %.2f cm\tAcceleration: X: %.2f m/s^2",
-        //      encoder_data.velocity, encoder_data.distance, acceleration[0]);
-
-        ESP_LOGI("DATA", "IMU Velocity: %.2f cm/s\t IMU Aceleration: %.2f",
-             imu_data.velocity, acceleration[0]);
-        
-        // ESP_LOGI("DATA", "IMU Velocity: %.4f cm/s\tLidar Velocity: %.4f cm/s\tEncoder Velocity: %.4f cm/s",
-        //      imu_data.velocity, lidar_data.velocity, encoder_data.velocity);
-
-
-        // ESP_LOGI("DATA", "VEL Encoder: %.4f cm/s\tIMU: %.4f cm/s\tLidar: %.4f cm/s",
-        //      encoder_data.velocity, imu_data.velocity, lidar_data.velocity);
-        // ///<--------------------------------------------------
-
         ///<-------------- PID Control ---------------
         // Low-pass filter
-        est_velocity = estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
+        est_velocity = encoder_data.velocity;//estimate_velocity(imu_data.velocity, lidar_data.velocity, encoder_data.velocity); ///< Update the estimated velocity
 
-        est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity;
-        last_est_velocity = est_velocity;
+        // est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity; ///< Apply low-pass filter to the estimated velocity when there is more than one sensor
+        last_est_velocity = est_velocity; ///< Update the last estimated velocity
 
         // Update PID Controller
         pid_compute(pid, est_velocity, &output);
+        bldc_set_duty(&pwm, output); ///< Set the duty cycle to the output of the PID controller
         
-        // // printf("I,%" PRIu32 ",%hd,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, distance, est_velocity, pid_param.set_point, output, 0.0, 0.0);
-        // // printf("I,%" PRIu32 ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, est_velocity, pid_param.set_point, 0.0, output, 0.0, 0.0);
+        if(timestamp % 100000 == 0) { ///< Print every 100ms to debug with IMU software
+            // printf("I,%" PRIu32 ",%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\r\n", timestamp, est_velocity, pid_param.set_point, 0.0, output, 0.0, 0.0);
+        }
 
-        // timestamp += 1000000 / SAMPLE_RATE;  // 100Hz
+        timestamp += 2000;  // 2ms in us
         ///<------------------------------------------
 
         ///<-------------- Logic to process the data ------
         if (move_one_time) {
-            if (temp_ctr < 1000) {
+            if (temp_ctr < 2000) {
                 temp_ctr += SAMPLE_TIME; ///< Increment the temporary counter
                 bldc_set_duty(&pwm, duty);
                 // printf("Updated duty cycle: %hd\n", duty);
@@ -377,37 +442,26 @@ void control_task( void * pvParameters ){
             }
         }
 
-        if (start_new_task) {
-            lidar_data.start_distance = distance; ///< Set the start distance
-            lidar_data.prev_distance = distance; ///< Set the previous distance
-            encoder_data.distance = 0; ///< Set the distance to 0
-            start_new_task = false; ///< Reset the flag
-            reached_goal = false; ///< Reset the flag
-        }
-
         float est_dist = encoder_data.distance /*+ fabsf(distance - lidar_data.start_distance)) * 0.5f*/;
         // printf("DIST Encoder: %.2f cm\t Lidar: %hu cm\tEstimated: %.2f cm\n",
         //         encoder_data.distance, fabsf(distance - lidar_data.start_distance), est_dist); ///< Log message
 
-        if ((est_dist > goal_distance && !reached_goal) || distance < 70 || distance > 2000) {
-            bldc_set_duty(&pwm, 0); ///< Stop the motor
-            encoder_data.estimate = 0; ///< Reset the flag
+        if ((est_dist > goal_distance && !reached_goal) /*|| distance < 70 || distance > 2000*/) {
+            // bldc_set_duty(&pwm, 0); ///< Stop the motor
+            pid_param.set_point = 0.0f; ///< Set the setpoint to 0
+            pid_update_parameters(pid, &pid_param);
 
             reached_goal = true; ///< Set the flag to true
 
-            // printf("Goal distance reached: %d mm\n", distance); ///< Log message
-        } else if (est_dist < goal_distance && !reached_goal) {
-            bldc_set_duty(&pwm, output); ///< Set the duty cycle to the output of the PID controller
-            
-            // printf("Goal distance not reached: %d mm\n", distance); ///< Log message
+            printf("Goal distance reached: %.2f mm\n", encoder_data.distance); ///< Log message
         }
         ///<--------------------------------------------
         
-
-        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 10 ms
+        vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 ms
     }
 }
 
+<<<<<<< HEAD
 // // Task to read data from console
 // void uart_task(void* pvParameters) {
 //     uart_config_t uart_config = {
@@ -499,6 +553,16 @@ void wifi_init_sta (void) {
             .password = WIFI_PASS,
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
         },
+=======
+// Task to read data from console
+void vTaskUART(void* pvParameters) {
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+>>>>>>> main
     };
 
     // Initialize the WiFi configuration
@@ -587,6 +651,36 @@ void tcp_server (void *pvParameters) {
                 movement_flags.move_left = 1;        // Set the move_left flag
                 break;
 
+<<<<<<< HEAD
+=======
+            case 'D': ///< Move to the right (derecha)
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
+                sscanf(data, "D%hu_%f", &goal_distance, &pid_param.set_point);
+                pid_update_parameters(pid, &pid_param);
+                lidar_data.start_distance = distance; ///< Set the start distance
+                lidar_data.prev_distance = distance; ///< Set the previous distance
+                encoder_data.distance = 0; ///< Set the distance to 0
+                reached_goal = false; ///< Reset the flag
+                encoder_data.distance = 0; ///< Set the distance to 0
+                encoder_data.last_vel = 0; ///< Reset the last velocity
+                printf("Moving to the right with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, pid_param.set_point);
+                break;
+            
+            case 'I': ///< Move to the left (izquierda)
+                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
+                sscanf(data, "I%hu_%f", &goal_distance, &pid_param.set_point);
+                pid_param.set_point = -pid_param.set_point;
+                pid_update_parameters(pid, &pid_param);
+                lidar_data.start_distance = distance; ///< Set the start distance
+                lidar_data.prev_distance = distance; ///< Set the previous distance
+                encoder_data.distance = 0; ///< Set the distance to 0
+                reached_goal = false; ///< Reset the flag
+                encoder_data.distance = 0; ///< Set the distance to 0
+                encoder_data.last_vel = 0; ///< Reset the last velocity
+                printf("Moving to the left with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, -pid_param.set_point);
+                break;
+            
+>>>>>>> main
             default:
                 break;
             }
