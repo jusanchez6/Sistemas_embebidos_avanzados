@@ -77,7 +77,7 @@ void app_main(void)
     bldc_enable(&pwmL); ///< Enable the BLDC motor
     bldc_set_duty(&pwmL, 0); ///< Set the duty cycle to 0%
 
-    bldc_init(&pwmB, PWM_GPIO_B, PWM_REV_GPIO_B, PWM_FREQ, 0, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
+    bldc_init(&pwmB, PWM_GPIO_B, PWM_REV_GPIO_B, PWM_FREQ, 1, PWM_RESOLUTION, MIN_PWM_CAL, MAX_PWM_CAL); ///< Initialize the BLDC motor
     bldc_enable(&pwmB); ///< Enable the BLDC motor
     bldc_set_duty(&pwmB, 0); ///< Set the duty cycle to 0%
     ///<--------------------------------------------------
