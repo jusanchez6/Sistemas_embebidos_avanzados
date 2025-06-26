@@ -18,15 +18,16 @@
 #include <assert.h>
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "driver/gptimer.h"
 
 #define SAMPLE_TIME 2 ///< Sample time in ms
 #define WHEEL_RADIO 3.0f ///< Radio of the wheel in cm
 
 ///<-------------- AS5600 configuration --------------
-#define AS5600_OUT_GPIO_RIGHT 6         ///< gpio number for right OUT signal
-#define AS5600_OUT_GPIO_LEFT 7          ///< gpio number for left OUT signal
-#define AS5600_OUT_GPIO_BACK 8          ///< gpio number for back OUT signal
+#define AS5600_OUT_GPIO_RIGHT 5         ///< gpio number for right OUT signal
+#define AS5600_OUT_GPIO_LEFT 6          ///< gpio number for left OUT signal
+#define AS5600_OUT_GPIO_BACK 7          ///< gpio number for back OUT signal
 #define AS5600_ADC_UNIT_ID ADC_UNIT_1   ///< I2C port number for master dev
 #define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
 ///<--------------------------------------------------
@@ -48,11 +49,11 @@
 #define PWM_GPIO_R 20               ///< GPIO number for right PWM signal
 #define PWM_REV_GPIO_R 21           ///< GPIO number for right PWM reverse signal
 
-#define PWM_GPIO_L 22               ///< GPIO number for left PWM signal
-#define PWM_REV_GPIO_L 23           ///< GPIO number for left PWM reverse signal
+#define PWM_GPIO_L 10               ///< GPIO number for left PWM signal
+#define PWM_REV_GPIO_L 11           ///< GPIO number for left PWM reverse signal
 
-#define PWM_GPIO_B 24               ///< GPIO number for back PWM signal
-#define PWM_REV_GPIO_B 25           ///< GPIO number for back PWM reverse signal
+#define PWM_GPIO_B 42               ///< GPIO number for back PWM signal
+#define PWM_REV_GPIO_B 41           ///< GPIO number for back PWM reverse signal
 
 #define PWM_FREQ 50                 ///< PWM frequency in Hz
 #define PWM_RESOLUTION 100000       ///< PWM resolution in bits
@@ -71,9 +72,9 @@
 ///<--------------------------------------------------
 
 typedef struct {
-    void * gStruct; ///< Velocity estimation from encoder in cm/s
-    void * sensor_data;     ///< Velocity estimation from IMU in cm/s
-    pid_block_handle_t pid_block;   ///< Velocity estimation from Lidar in cm/s
+    AS5600_t * gStruct; ///< Velocity estimation from encoder in cm/s
+    encoder_data_t * sensor_data;     ///< Velocity estimation from IMU in cm/s
+    pid_block_handle_t * pid_block;   ///< Velocity estimation from Lidar in cm/s
     bldc_pwm_motor_t * pwm_motor; ///< BLDC motor object
 } control_params_t;
 
