@@ -56,6 +56,20 @@ void app_main(void)
 
     extern pid_parameter_t pid_paramR, pid_paramL, pid_paramB; ///< PID parameters for right, left and back wheels
 
+    
+
+    ///<---------------- Initialize the Wifi ----------------
+    if (wifi_init_station() != ESP_OK){
+        ESP_LOGE("WIFI_INIT", "Could not initialize WiFi station mode...");
+    
+    } else {    
+        ESP_LOGI("WIFI_INIT", "WiFi station mode initialized successfully...");
+        get_ip_address(); ///< Get the IP address of the ESP32
+
+    }
+    ///<----------------------------------------------------
+    
+    
     ///<-------------- Initialize the VL53L1X sensor -----
     if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
         ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
