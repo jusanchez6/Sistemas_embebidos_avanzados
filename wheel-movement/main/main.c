@@ -56,52 +56,86 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "driver/gptimer.h"
+#include "driver/gpio.h"
 
+// Include libraries for Wifi 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <esp_system.h>
+#include <esp_wifi.h>
+#include <nvs_flash.h>
+#include <esp_netif.h>
+#include <lwip/err.h>
+#include <lwip/sys.h>
+
+static const char *TAG = "WHEEL MOVEMENT"; ///< Tag for logging
+
+#define SAMPLE_TIME CONFIG_SAMPLE_TIME ///< Sample time in ms
 #define SAMPLE_TIME 2 ///< Sample time in ms
 
 ///<---------- Main mode: ------------------------
-#define MAIN_MODE 0 ///< 0 = No Calibration, 1 = ESC Calibration, 2 AS5600 PROBE
+#define MAIN_MODE CONFIG_MAIN_MODE ///< 0 = No Calibration, 1 = ESC Calibration, 2 AS5600 PROBE
 ///<---------------------------------------------
 
 ///<-------------- AS5600 configuration ---------------
-#define AS5600_I2C_MASTER_SCL_GPIO 5    ///< gpio number for I2C master clock
-#define AS5600_I2C_MASTER_SDA_GPIO 4    ///< gpio number for I2C master data 
-#define AS5600_OUT_GPIO 6               ///< gpio number for OUT signal
-#define AS5600_I2C_MASTER_NUM 0         ///< I2C port number for master dev
-#define AS5600_MODE 1                   ///< Calibration = 0, Angle through ADC = 1
+#define AS5600_I2C_MASTER_SCL_GPIO  CONFIG_AS5600_I2C_MASTER_SCL_GPIO   ///< gpio number for I2C master clock
+#define AS5600_I2C_MASTER_SDA_GPIO  CONFIG_AS5600_I2C_MASTER_SDA_GPIO   ///< gpio number for I2C master data 
+#define AS5600_OUT_GPIO             CONFIG_AS5600_OUT_GPIO              ///< gpio number for OUT signal
+#define AS5600_I2C_MASTER_NUM       CONFIG_AS5600_I2C_MASTER_NUM        ///< I2C port number for master dev
+#define AS5600_MODE                 CONFIG_AS5600_MODE                  ///< Calibration = 0, Angle through ADC = 1
 ///<--------------------------------------------------
 
 ///<------------- TM151 configuration ----------------
-#define TM151_UART_TX 17                          ///< Gpio pin for UART TX
-#define TM151_UART_RX 18                          ///< GPIO pin for UART RX
-#define TM151_UART_BAUDRATE 115600                ///< Baudrate for UART communication
-#define TM151_BUFFER_SIZE 1024                       ///< Buffer size for UART communication
+#define TM151_UART_TX               CONFIG_TM151_UART_TX                ///< Gpio pin for UART TX
+#define TM151_UART_RX               CONFIG_TM151_UART_RX                ///< GPIO pin for UART RX
+#define TM151_UART_BAUDRATE         CONFIG_TM151_UART_BAUDRATE          ///< Baudrate for UART communication
+#define TM151_BUFFER_SIZE           CONFIG_TM151_BUFFER_SIZE            ///< Buffer size for UART communication
 ///<--------------------------------------------------
 
 ///<------------- VL53L1X configuration --------------
-#define VL53L1X_I2C_PORT 1      ///< I2C port number for master dev
-#define VL53L1X_SDA_GPIO 41     ///< gpio number for I2C master data 
-#define VL53L1X_SCL_GPIO 42     ///< gpio number for I2C mastes clock
+#define VL53L1X_I2C_PORT            CONFIG_VL53L1X_I2C_PORT             ///< I2C port number for master dev
+#define VL53L1X_SDA_GPIO            CONFIG_VL53L1X_SDA_GPIO             ///< gpio number for I2C master data 
+#define VL53L1X_SCL_GPIO            CONFIG_VL53L1X_SCL_GPIO             ///< gpio number for I2C mastes clock
 ///<--------------------------------------------------
 
 ///<-------------- BLDC configuration -----------------
-#define PWM_GPIO 20                  ///< GPIO number for PWM signal
-#define PWM_REV_GPIO 21              ///< GPIO number for PWM reverse signal
-#define PWM_FREQ 50                 ///< PWM frequency in Hz
-#define PWM_RESOLUTION 100000       ///< PWM resolution in bits
-#define MAX_PWM_CAL 120             ///< Maximum PWM value
-#define MIN_PWM_CAL 35              ///< Minimum PWM value
-#define MAX_PWM_RE 119              ///< Maximum PWM value (moves fully)
-#define MIN_PWM_RE 38               ///< Minimum PWM value (does not move)
+#define PWM_GPIO                    CONFIG_PWM_GPIO                     ///< GPIO number for PWM signal
+#define PWM_REV_GPIO                CONFIG_PWM_REV_GPIO                 ///< GPIO number for PWM reverse signal
+#define PWM_FREQ                    CONFIG_PWM_FREQ                     ///< PWM frequency in Hz
+#define PWM_RESOLUTION              CONFIG_PWM_RESOLUTION               ///< PWM resolution in bits
+#define MAX_PWM_CAL                 CONFIG_MAX_PWM_CAL                  ///< Maximum PWM value
+#define MIN_PWM_CAL                 CONFIG_MIN_PWM_CAL                  ///< Minimum PWM value
+#define MAX_PWM_RE                  CONFIG_MAX_PWM_RE                   ///< Maximum PWM value (moves fully)
+#define MIN_PWM_RE                  CONFIG_MIN_PWM_RE                   ///< Minimum PWM value (does not move)
 ///<--------------------------------------------------
 
 ///<-------------- PID configuration -----------------
+<<<<<<< HEAD
+#define PID_KP 1.66f                //< PID Kp parameter
+#define PID_KI 0.6f                 //< PID Ki parameter
+#define PID_KD 0.05f                //< PID Kd parameter
+#define EULER 2.71828               //< Euler's number
+#define PI 3.14159                  //< Pi constant
+#define SAMPLE_RATE 100             //< Sample rate in Hz
+=======
 #define PID_KP .01f
 #define PID_KI .01f
 #define PID_KD .001f
 #define EULER 2.71828
 #define PI 3.14159
+>>>>>>> main
 ///<--------------------------------------------------
+
+
+///<------------- WIFI configuration --------------
+#define WIFI_SSD            CONFIG_WIFI_SSD                 ///< Your WiFi SSID
+#define WIFI_PASS           CONFIG_WIFI_PASS                ///< Your WiFi password
+#define WIFI_MAX_RETRY      CONFIG_MAX_ENTRY                ///< Maximum number of retries to connect to WiFi
+#define PORT                CONFIG_PORT                     ///< Port for the TCP server
+///<--------------------------------------------------
+
+
 
 #if MAIN_MODE == 0
 
@@ -164,6 +198,31 @@ void vTaskIMU(void * pvParameters);
 void vTaskLidar(void * pvParameters);
 
 /**
+ * @brief Movement flags for controlling a motor
+ * 
+ * This union defines the movement flags used to control a motor's PID, duty cycle,
+ * set point, and direction of movement (left or right).
+ * 
+ * The individual bits can be used to indicate whether to change the PID, duty cycle,
+ * set point, or the direction of movement.
+ */
+union movement_flags
+{
+    struct
+    {
+        int8_t change_PID           : 1;        // Flag to indicate if PID parameters should be changed
+        int8_t change_Duty          : 1;        // Flag to indicate if duty cycle should be changed
+        int8_t change_set_point     : 1;        // Flag to indicate if set point should be changed  
+        int8_t move_right           : 1;        // Flag to indicate if the motor should move to the right
+        int8_t move_left            : 1;        // Flag to indicate if the motor should move to the left
+        int8_t reserved             : 3;        // Reserved bits for future use
+    };
+    uint8_t Word;
+} movement_flags;
+
+
+
+/**
  * @brief Task to control the wheel
  * 
  * @param pvParameters 
@@ -176,6 +235,21 @@ void vTaskControl( void * pvParameters );
  * @param pvParameters 
  */
 void vTaskUART(void * pvParameters);
+
+/**
+ * @brief Initialize the WiFi station
+ * 
+ * This function initializes the WiFi station and connects to the specified SSID and password.
+ */
+void wifi_init_sta (void);
+
+/**
+ * @brief Get the IP address of the WiFi station
+ * 
+ * This function retrieves the IP address of the WiFi station and logs it.
+ */
+void get_ip_address(void)
+
 
 void app_main(void)
 {
@@ -387,6 +461,99 @@ void vTaskControl( void * pvParameters ){
     }
 }
 
+<<<<<<< HEAD
+// // Task to read data from console
+// void uart_task(void* pvParameters) {
+//     uart_config_t uart_config = {
+//         .baud_rate = 115200,
+//         .data_bits = UART_DATA_8_BITS,
+//         .parity = UART_PARITY_DISABLE,
+//         .stop_bits = UART_STOP_BITS_1,
+//         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+//     };
+//     uart_param_config(UART_NUM_0, &uart_config);
+//     uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
+//     uart_flush(UART_NUM_0);  // Flush UART buffer
+
+//     char data[128];
+//     while (1) {
+//         int len = uart_read_bytes(UART_NUM_0, (uint8_t*)data, sizeof(data) - 1, pdMS_TO_TICKS(1000));
+//         if (len > 0) {
+//             data[len] = '\0';
+            
+
+//             switch (data[0])
+//             {
+//             case 'P': ///< Change the PID parameters
+//                 sscanf(data, "P %f %f %f %f", &pid_param.kp, &pid_param.ki, &pid_param.kd, &pid_param.set_point);
+//                 pid_update_parameters(pid, &pid_param);
+//                 printf("Updated PID values: kp=%.2f, ki=%.2f, kd=%.2f, setpoint=%.2f\n", pid_param.kp, pid_param.ki, pid_param.kd, pid_param.set_point);
+//                 break;
+            
+//             case 'X': ///< Change the duty cycle
+//                 sscanf(data, "X %hd", &duty);
+//                 move_one_time = true; ///< Set the flag to move a bit
+//                 encoder_data.distance = 0; ///< Set the distance to 0
+//                 encoder_data.last_vel = 0; ///< Reset the last velocity
+//                 encoder_data.estimate = 1; ///< Set the flag to estimate the distance
+//                 break;
+
+//             case 'S': ///< Change the setpoint
+//                 sscanf(data, "S %f", &pid_param.set_point);
+//                 pid_update_parameters(pid, &pid_param);
+//                 printf("Updated setpoint: %.2f\n", pid_param.set_point);
+//                 break;
+
+//             case 'D': ///< Move to the right (derecha)
+//                 encoder_data.estimate = 1; ///< Set the flag to estimate the distance
+//                 sscanf(data, "D%hu_%f", &goal_distance, &pid_param.set_point);
+//                 pid_update_parameters(pid, &pid_param);
+//                 start_new_task = true; ///< Set the flag to start a new task
+//                 printf("Moving to the right with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, pid_param.set_point);
+//                 break;
+            
+//             case 'I': ///< Move to the left (izquierda)
+//                 encoder_data.estimate = 1; ///< Set the flag to estimate the distance
+//                 sscanf(data, "I%hu_%f", &goal_distance, &pid_param.set_point);
+//                 pid_param.set_point = -pid_param.set_point;
+//                 pid_update_parameters(pid, &pid_param);
+//                 start_new_task = true; ///< Set the flag to start a new task
+//                 printf("Moving to the left with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, -pid_param.set_point);
+//                 break;
+//
+//             default:
+//                 break;
+//             }
+//         }
+//     }
+// }
+
+
+// 
+
+void wifi_init_sta (void) {
+    // Initialize NVS
+    esp_netif_init();
+
+    // Initialize the event loop
+    esp_event_loop_create_default();
+
+    // Create the default WiFi station interface
+    esp_netif_create_default_wifi_sta();
+
+    // Initialize the WiFi driver
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_wifi_init(&cfg);
+
+
+    // Set the WiFi configuration
+    wifi_config_config_t wifi_config = {
+        .sta = {
+            .ssid = WIFI_SSD,
+            .password = WIFI_PASS,
+            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+        },
+=======
 // Task to read data from console
 void vTaskUART(void* pvParameters) {
     uart_config_t uart_config = {
@@ -395,40 +562,97 @@ void vTaskUART(void* pvParameters) {
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+>>>>>>> main
     };
-    uart_param_config(UART_NUM_0, &uart_config);
-    uart_driver_install(UART_NUM_0, 1024, 0, 0, NULL, 0);
-    uart_flush(UART_NUM_0);  // Flush UART buffer
 
-    char data[128];
-    while (1) {
-        int len = uart_read_bytes(UART_NUM_0, (uint8_t*)data, sizeof(data) - 1, pdMS_TO_TICKS(1000));
-        if (len > 0) {
-            data[len] = '\0';
+    // Initialize the WiFi configuration
+    esp_wifi_set_mode(WIFI_MODE_STA); 
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    esp_wifi_start();
+
+    ESP_LOGI(TAG, "Connecting to %s...", WIFI_SSD);
+    esp_wifi_connect();
+    
+}
+
+void get_ip_address(void) {
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (netif == NULL) {
+        ESP_LOGI(TAG, "Could not find netif for WIFI_STA_DEF");
+        return;
+    }
+
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(netif, &ip_info);
+    ESP_LOGI(TAG, "\n \nIP Address: " IPSTR, IP2STR(&ip_info.ip));
+}
+
+void tcp_server (void *pvParameters) {
+    char rx_buffer[128];
+
+    struct sockaddr_in server_addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(PORT),
+        .sin_addr.s_addr = htonl(INADDR_ANY),
+    };
+
+    int listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    bind(listen_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    listen(listen_sock, 1);
+
+    ESP_LOGI(TAG, "TCP server listening on port %d", PORT);
+
+    while (1)
+    {
+        struct main sockaddr_in client_addr;
+        uint addr_len = sizeof(client_addr);
+        int sock = accept(listen_sock, (struct sockaddr *)&client_addr, &addr_len);
+        ESP_LOGI(TAG, "Client connected");
+
+        while (1) {
+            int len = recv (sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
             
+            if (len <= o) break; ///< If there is an error or the connection is closed, break the loop
 
-            switch (data[0])
+            rx_buffer[len] = 0; ///< Null-terminate the received data
+
+            ESP_LOGI(TAG, "Received: %s", rx_buffer); ///< Log the received data
+
+            // PRCESS THE DATA.
+            switch (rx_buffer[0])  // Assuming the first character indicates the command type
             {
-            case 'P': ///< Change the PID parameters
-                sscanf(data, "P %f %f %f %f", &pid_param.kp, &pid_param.ki, &pid_param.kd, &pid_param.set_point);
-                pid_update_parameters(pid, &pid_param);
-                printf("Updated PID values: kp=%.2f, ki=%.2f, kd=%.2f, setpoint=%.2f\n", pid_param.kp, pid_param.ki, pid_param.kd, pid_param.set_point);
+            case 'P':  // Change PID command
+                ESP_LOGI(TAG, "Change PID command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.change_PID = 1;      // Set the change_PID flag
+                break;
+
+            case 'X':  // Change Duty command
+                ESP_LOGI(TAG, "Change Duty command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.change_Duty = 1;      // Set the change_Duty flag
                 break;
             
-            case 'X': ///< Change the duty cycle
-                sscanf(data, "X %hd", &duty);
-                move_one_time = true; ///< Set the flag to move a bit
-                encoder_data.distance = 0; ///< Set the distance to 0
-                encoder_data.last_vel = 0; ///< Reset the last velocity
-                encoder_data.estimate = 1; ///< Set the flag to estimate the distance
+            case 'S':  // Change Set Point command
+                ESP_LOGI(TAG, "Change Set Point command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.change_set_point = 1; // Set the change_set_point flag
+                break;
+            
+            case 'D':  // Move Right command
+                ESP_LOGI(TAG, "Move Right command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.move_right = 1;       // Set the move_right flag
+
+                break;
+            case 'I':  // Move Left command
+                ESP_LOGI(TAG, "Move Left command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.move_left = 1;        // Set the move_left flag
                 break;
 
-            case 'S': ///< Change the setpoint
-                sscanf(data, "S %f", &pid_param.set_point);
-                pid_update_parameters(pid, &pid_param);
-                printf("Updated setpoint: %.2f\n", pid_param.set_point);
-                break;
-
+<<<<<<< HEAD
+=======
             case 'D': ///< Move to the right (derecha)
                 encoder_data.estimate = 1; ///< Set the flag to estimate the distance
                 sscanf(data, "D%hu_%f", &goal_distance, &pid_param.set_point);
@@ -456,12 +680,21 @@ void vTaskUART(void* pvParameters) {
                 printf("Moving to the left with goal distance: %hucm and velocity: %.2fcm/s\n", goal_distance, -pid_param.set_point);
                 break;
             
+>>>>>>> main
             default:
                 break;
             }
+
+            // Enviar las flags de movimiento al cliente
+            send(sock, &movement_flags.Word, sizeof(movement_flags.Word), 0); 
+            
         }
+
+        close(sock); ///< Close the socket
+        ESP_LOGI(TAG, "Client disconnected");   
     }
 }
+
 
 #endif
 

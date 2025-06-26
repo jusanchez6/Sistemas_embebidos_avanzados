@@ -15,4 +15,5 @@ idf_component_register(
         INCLUDE_DIRS "." "../sensors/AS5600_HAL_Library/include" "../sensors/TM151-driver/include" "../sensors/VL53L1X-driver/include"
                     "../platform/include" "../drivers/bldc_pwm/include" "../drivers/pid_lib/include" "../drivers/sensor_fusion/include"
                     "./include"
+        PRIV_REQUIRES driver esp_wifi nvs_flash esp_adc esp_timer
 )

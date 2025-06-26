@@ -28,7 +28,52 @@
 
 #define PIN_LED                 48
 
+
+
+#define CHANGE_PID_FLAG             0x01
+#define CHANGE_DUTY_FLAG            0x02
+#define CHANGE_SET_POINT_FLAG       0x04
+#define MOVE_RIGHT_FLAG             0x08
+#define MOVE_LEFT_FLAG              0x10
+
+
 static const char *TAG = "wifi station";
+
+
+/**
+ * @brief Movement flags for controlling a motor
+ * 
+ * This union defines the movement flags used to control a motor's PID, duty cycle,
+ * set point, and direction of movement (left or right).
+ * 
+ * The individual bits can be used to indicate whether to change the PID, duty cycle,
+ * set point, or the direction of movement.
+ */
+union movement_flags
+{
+    struct
+    {
+        int8_t change_PID           : 1;        // Flag to indicate if PID parameters should be changed
+        int8_t change_Duty          : 1;        // Flag to indicate if duty cycle should be changed
+        int8_t change_set_point     : 1;        // Flag to indicate if set point should be changed  
+        int8_t move_right           : 1;        // Flag to indicate if the motor should move to the right
+        int8_t move_left            : 1;        // Flag to indicate if the motor should move to the left
+        int8_t reserved             : 3;        // Reserved bits for future use
+    };
+    uint8_t Word;
+} movement_flags;
+
+
+struct movement_params 
+{
+    float Kp;                   // Proportional gain
+    float Ki;                   // Integral gain
+    float Kd;                   // Derivative gain
+    float duty_cycle;           // Duty cycle for PWM control
+    float set_point;            // Desired set point for velocity of the motor
+    float goal_distance;        // Goal distance to move
+} movement_params;
+
 
 
 /**
@@ -143,19 +188,61 @@ void tcp_server_task(void *pvParameters) {
 
             // Procesar el comando recibido
             
-            if (strcmp(rx_buffer, "LED_ON") == 0) {
-                gpio_set_level(PIN_LED, 1);
-                send(sock, "LED is ON\n", 11, 0);
+            switch (rx_buffer[0])  // Assuming the first character indicates the command type
+            {
+            case 'P':  // Change PID command
+                ESP_LOGI(TAG, "Change PID command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.change_PID = 1;      // Set the change_PID flag
+
+                // get the new PID values from the received data
+                sscanf(rx_buffer + 1, "%f %f %f", &Kp, &Ki, &Kd);
+                movement_params.Kp = Kp;            // Update Kp
+                movement_params.Ki = Ki;            // Update Ki
+                movement_params.Kd = Kd;            // Update Kd
+                ESP_LOGI(TAG, "New PID values: Kp=%.2f, Ki=%.2f, Kd=%.2f", movement_params.Kp, movement_params.Ki, movement_params.Kd);
+
+                break;
+            case 'X':  // Change Duty command
+                ESP_LOGI(TAG, "Change Duty command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.change_Duty = 1;      // Set the change_Duty flag
 
 
-            } else if (strcmp(rx_buffer, "LED_OFF") == 0) {
-                gpio_set_level(PIN_LED, 0);
-                send(sock, "LED is OFF\n", 12, 0);
+                // get the new duty cycle from the received data
+                sscanf(rx_buffer + 1, "%hd", &movement_params.duty_cycle);
+                ESP_LOGI(TAG, "New Duty Cycle: %.hd", movement_params.duty_cycle);
+                break;
+            
+            case 'S':  // Change Set Point command
+                ESP_LOGI(TAG, "Change Set Point command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.change_set_point = 1; // Set the change_set_point flag
 
-            } else {
-                ESP_LOGI(TAG, "Command not recognized: %s", rx_buffer);
-                send(sock, "ERROR: Command not recognized\n", 30, 0);
+                // get the new set point from the received data
+                sscanf(rx_buffer + 1, "%f", &movement_params.set_point);
+                ESP_LOGI(TAG, "New Set Point: %.2f", movement_params.set_point);
+                break;
+            
+            case 'D':  // Move Right command
+                ESP_LOGI(TAG, "Move Right command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.move_right = 1;       // Set the move_right flag
+                
+                sscanf(rx_buffer + 1, "%f", &movement_params.goal_distance);
+                break;
+            case 'I':  // Move Left command
+                ESP_LOGI(TAG, "Move Left command received");
+                movement_flags.Word = 0;            // Reset all flags
+                movement_flags.move_left = 1;        // Set the move_left flag
+                break;
+
+            default:
+                break;
             }
+
+            // Enviar las flags de movimiento al cliente
+            send(sock, &movement_flags.Word, sizeof(movement_flags.Word), 0);
 
         }
 
