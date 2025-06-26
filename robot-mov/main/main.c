@@ -159,14 +159,39 @@ void app_main(void)
         .pwm_motor = &pwmB
     };
 
+    vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Wait for 1 second to ensure all peripherals are initialized
+
     ///<-------------- Create the task ---------------
 
     TaskHandle_t xRightEncoderTaskHandle, xLeftEncoderTaskHandle, xBackEncoderTaskHandle; ///< Task handles for encoders
     /*, xIMUTaskHandle = NULL, xLidarTaskHandle = NULL*/ ///< Task handles
+
+    TaskHandle_t xRightControlTaskHandle, xLeftControlTaskHandle, xBackControlTaskHandle; ///< Task handles for control tasks
+    xTaskCreatePinnedToCore(vTaskControl, "rwh_control_task", 4096, &right_control_params, 9, &xRightControlTaskHandle, 1); ///< Create the task to control the right wheel
+    xTaskCreatePinnedToCore(vTaskControl, "lwh_control_task", 4096, &left_control_params, 9, &xLeftControlTaskHandle, 1);   ///< Create the task to control the left wheel
+    xTaskCreatePinnedToCore(vTaskControl, "bwh_control_task", 4096, &back_control_params, 9, &xBackControlTaskHandle, 1);   ///< Create the task to control the back wheel
+
+    configASSERT(xRightControlTaskHandle); ///< Check if the task was created successfully
+    if (xRightControlTaskHandle == NULL) {
+        ESP_LOGE("CTRL_TASK", "Failed to create task...");
+        return;
+    }
+    configASSERT(xLeftControlTaskHandle); ///< Check if the task was created successfully
+    if (xLeftControlTaskHandle == NULL) {
+        ESP_LOGE("CTRL_TASK", "Failed to create task...");
+        return;
+    }
+    configASSERT(xBackControlTaskHandle); ///< Check if the task was created successfully
+    if (xBackControlTaskHandle == NULL) {
+        ESP_LOGE("CTRL_TASK", "Failed to create task...");
+        return;
+    }
+
     ESP_LOGI("TASKS", "Right encoder handle: 0x%04X", gAs5600R.out); ///< Log the task handles
-    xTaskCreate(vTaskEncoder, "right_encoder_task", 2048, &right_control_params, 9, &xRightEncoderTaskHandle); ///< Create the task to read from encoder
-    xTaskCreate(vTaskEncoder, "left_encoder_task", 2048, &left_control_params, 9, &xLeftEncoderTaskHandle); ///< Create the task to read from encoder
-    xTaskCreate(vTaskEncoder, "back_encoder_task", 2048, &back_control_params, 9, &xBackEncoderTaskHandle); ///< Create the task to read from encoder
+    xTaskCreatePinnedToCore(vTaskEncoder, "right_encoder_task", 2048, &right_control_params, 8, &xRightEncoderTaskHandle, 0); ///< Create the task to read from right encoder
+    xTaskCreatePinnedToCore(vTaskEncoder, "left_encoder_task", 2048, &left_control_params, 8, &xLeftEncoderTaskHandle, 0);    ///< Create the task to read from left encoder
+    xTaskCreatePinnedToCore(vTaskEncoder, "back_encoder_task", 2048, &back_control_params, 8, &xBackEncoderTaskHandle, 0);    ///< Create the task to read from back encoder
+
     configASSERT(xRightEncoderTaskHandle); ///< Check if the task was created successfully
     if (xRightEncoderTaskHandle == NULL) {
         ESP_LOGE("ENCODER_TASK", "Failed to create task...");
@@ -197,25 +222,7 @@ void app_main(void)
     //     return;
     // }
 
-    TaskHandle_t xRightControlTaskHandle, xLeftControlTaskHandle, xBackControlTaskHandle; ///< Task handles for control tasks
-    // xTaskCreate(vTaskControl, "rwh_control_task", 4096, &right_control_params, 9, &xRightControlTaskHandle); ///< Create the task to control the wheel
-    // xTaskCreate(vTaskControl, "lwh_control_task", 4096, &left_control_params,  9, &xLeftControlTaskHandle); ///< Create the task to control the wheel
-    // xTaskCreate(vTaskControl, "bwh_control_task", 4096, &back_control_params,  9, &xBackControlTaskHandle); ///< Create the task to control the wheel
-    // configASSERT(xRightControlTaskHandle); ///< Check if the task was created successfully
-    // if (xRightControlTaskHandle == NULL) {
-    //     ESP_LOGE("CTRL_TASK", "Failed to create task...");
-    //     return;
-    // }
-    // configASSERT(xLeftControlTaskHandle); ///< Check if the task was created successfully
-    // if (xLeftControlTaskHandle == NULL) {
-    //     ESP_LOGE("CTRL_TASK", "Failed to create task...");
-    //     return;
-    // }
-    // configASSERT(xBackControlTaskHandle); ///< Check if the task was created successfully
-    // if (xBackControlTaskHandle == NULL) {
-    //     ESP_LOGE("CTRL_TASK", "Failed to create task...");
-    //     return;
-    // }
+    
     ///<-------------------------------------------------
     
     

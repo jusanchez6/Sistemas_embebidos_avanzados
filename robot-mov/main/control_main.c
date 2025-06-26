@@ -56,7 +56,7 @@ pid_parameter_t pid_paramR = {
     .kd = PID_KD,
     .max_output = 70.0f,
     .min_output = -70.0f,
-    .set_point = 10.0f,
+    .set_point = 20.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
 };
@@ -67,7 +67,7 @@ pid_parameter_t pid_paramL = {
     .kd = PID_KD,
     .max_output = 70.0f,
     .min_output = -70.0f,
-    .set_point = 10.0f,
+    .set_point = 20.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
 };
@@ -78,7 +78,7 @@ pid_parameter_t pid_paramB = {
     .kd = PID_KD,
     .max_output = 70.0f,
     .min_output = -70.0f,
-    .set_point = 10.0f,
+    .set_point = 20.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
 };
@@ -91,11 +91,22 @@ void vTaskEncoder(void * pvParameters) {
 
     ///<-------------- Get angle through ADC -------------
     while (1) {
-        ESP_LOGI("TASKS", "Right encoder handle: 0x%04X", params->gStruct->out); ///< Log the task handles
-        float angle = AS5600_ADC_GetAngle(&(*(params->gStruct))); ///< Get the angle from the ADC
-        // estimate_velocity_encoder(encoder_data); ///< Estimate the velocity using encoder data
+        encoder_data->angle = AS5600_ADC_GetAngle(params->gStruct); ///< Get the angle from the ADC
+        estimate_velocity_encoder(encoder_data); ///< Estimate the velocity using encoder data
 
-        ESP_LOGI("", "Angle: %.2f", angle); ///< Log the angle and velocity
+        // Get current task handle
+        TaskHandle_t xTask = xTaskGetCurrentTaskHandle();
+
+        // Get task name
+        const char *task_name = pcTaskGetName(xTask);
+
+        // Log every 100ms because of the ESP_LOGI overhead
+        // static int counter = 0;
+        // if (++counter >= 50) {  // 2ms × 50 = 100ms
+        //     ESP_LOGI(task_name, "Angle: %.2f", encoder_data->angle);
+        //     counter = 0;
+        // }   
+
 
         vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 ms
     }
@@ -149,6 +160,20 @@ void vTaskControl( void * pvParameters ){
 
         // Update PID Controller
         pid_compute(*(params->pid_block), est_velocity, &output);
+
+        // Get current task handle
+        TaskHandle_t xTask = xTaskGetCurrentTaskHandle();
+
+        // Get task name
+        const char *task_name = pcTaskGetName(xTask);
+
+        // Log every 100ms because of the ESP_LOGI overhead
+        // static int counter = 0;
+        // if (++counter >= 50) {  // 2ms × 50 = 100ms
+        //     ESP_LOGI(task_name, "Input: %.2f, Output: %.2f", est_velocity, output); ///< Log the PID parameters
+        //     counter = 0;
+        // }   
+
         bldc_set_duty(params->pwm_motor, output); ///< Set the duty cycle to the output of the PID controller
         
         if(timestamp % 100000 == 0) { ///< Print every 100ms to debug with IMU software

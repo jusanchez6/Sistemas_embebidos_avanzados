@@ -21,7 +21,7 @@
 #include "freertos/semphr.h"
 #include "driver/gptimer.h"
 
-#define SAMPLE_TIME 1000 ///< Sample time in ms
+#define SAMPLE_TIME 2 ///< Sample time in ms
 #define WHEEL_RADIO 3.0f ///< Radio of the wheel in cm
 
 ///<-------------- AS5600 configuration --------------
