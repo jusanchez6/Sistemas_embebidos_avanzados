@@ -91,8 +91,12 @@ void vTaskEncoder(void * pvParameters) {
 
     ///<-------------- Get angle through ADC -------------
     while (1) {
-        encoder_data->angle = AS5600_ADC_GetAngle(params->gStruct); ///< Get the angle from the ADC
-        estimate_velocity_encoder(encoder_data); ///< Estimate the velocity using encoder data
+        ESP_LOGI("TASKS", "Right encoder handle: 0x%04X", params->gStruct->out); ///< Log the task handles
+        float angle = AS5600_ADC_GetAngle(&(*(params->gStruct))); ///< Get the angle from the ADC
+        // estimate_velocity_encoder(encoder_data); ///< Estimate the velocity using encoder data
+
+        ESP_LOGI("", "Angle: %.2f", angle); ///< Log the angle and velocity
+
         vTaskDelay(SAMPLE_TIME / portTICK_PERIOD_MS); ///< Wait for 2 ms
     }
     ///<--------------------------------------------------
@@ -144,7 +148,7 @@ void vTaskControl( void * pvParameters ){
         last_est_velocity = est_velocity; ///< Update the last estimated velocity
 
         // Update PID Controller
-        pid_compute(params->pid_block, est_velocity, &output);
+        pid_compute(*(params->pid_block), est_velocity, &output);
         bldc_set_duty(params->pwm_motor, output); ///< Set the duty cycle to the output of the PID controller
         
         if(timestamp % 100000 == 0) { ///< Print every 100ms to debug with IMU software

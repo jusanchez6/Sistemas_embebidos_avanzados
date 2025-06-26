@@ -43,28 +43,28 @@ uint32_t temp_ctr = 0; ///< Temporary counter to stop move_one_time
 
 void app_main(void)
 {
-    AS5600_t gAs5600R, gAs5600L, gAs5600B;  ///< AS5600 object for angle sensor right, left and back
-    vl53l1x_t gVl53l1x;                     ///< VL53L1X object for distance sensor
-    uart_t myUART;                          ///< UART object for TM151 IMU
+    static AS5600_t gAs5600R, gAs5600L, gAs5600B;  ///< AS5600 object for angle sensor right, left and back
+    static vl53l1x_t gVl53l1x;                     ///< VL53L1X object for distance sensor
+    static uart_t myUART;                          ///< UART object for TM151 IMU
 
     extern encoder_data_t right_encoder_data, left_encoder_data, back_encoder_data; ///< Encoder data for right, left and back wheels
     extern imu_data_t imu_data;
     extern lidar_data_t lidar_data;
 
-    bldc_pwm_motor_t pwmR, pwmL, pwmB;   ///< BLDC motor object right, left and back
-    pid_block_handle_t pidR, pidL, pidB; ///< PID control block handle
+    static bldc_pwm_motor_t pwmR, pwmL, pwmB;   ///< BLDC motor object right, left and back
+    static pid_block_handle_t pidR, pidL, pidB; ///< PID control block handle
 
     extern pid_parameter_t pid_paramR, pid_paramL, pid_paramB; ///< PID parameters for right, left and back wheels
 
     ///<-------------- Initialize the VL53L1X sensor -----
-    if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
-        ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
-        return;
-    }
-    VL53L1X_setDistanceMode(&gVl53l1x, Short); 
-    VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
-    VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
-    vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
+    // if(!VL53L1X_init(&gVl53l1x, VL53L1X_I2C_PORT, VL53L1X_SCL_GPIO, VL53L1X_SDA_GPIO, 0)){
+    //     ESP_LOGE(TAG_VL53L1X, "Could not initialize VL53L1X sensor...");
+    //     return;
+    // }
+    // VL53L1X_setDistanceMode(&gVl53l1x, Short); 
+    // VL53L1X_setMeasurementTimingBudget(&gVl53l1x, 20000);
+    // VL53L1X_startContinuous(&gVl53l1x, SAMPLE_TIME);
+    // vTaskDelay(500 / portTICK_PERIOD_MS); ///< Wait for 500 ms
     ///<--------------------------------------------------
 
 
@@ -122,7 +122,7 @@ void app_main(void)
     ///<--------------------------------------------------
     
     ///<-------------- Initialize the TM151 sensor ------
-    tm151_init(&myUART, TM151_UART_BAUDRATE, TM151_BUFFER_SIZE, TM151_UART_TX, TM151_UART_RX); ///< Initialize the TM151 sensor
+    // tm151_init(&myUART, TM151_UART_BAUDRATE, TM151_BUFFER_SIZE, TM151_UART_TX, TM151_UART_RX); ///< Initialize the TM151 sensor
     ///<--------------------------------------------------
 
     ///<------------- Initialize the PID controllers ------
@@ -138,24 +138,24 @@ void app_main(void)
     pid_new_control_block(&pid_config, &pidB);
     ///<---------------------------------------------------
 
-    control_params_t right_control_params = {
+    static control_params_t right_control_params = {
         .gStruct = &gAs5600R,
         .sensor_data = &right_encoder_data,
-        .pid_block = pidR,
+        .pid_block = &pidR,
         .pwm_motor = &pwmR
     };
 
-    control_params_t left_control_params = {
+    static control_params_t left_control_params = {
         .gStruct = &gAs5600L,
         .sensor_data = &left_encoder_data,
-        .pid_block = pidL,
+        .pid_block = &pidL,
         .pwm_motor = &pwmL
     };
 
-    control_params_t back_control_params = {
+    static control_params_t back_control_params = {
         .gStruct = &gAs5600B,
         .sensor_data = &back_encoder_data,
-        .pid_block = pidB,
+        .pid_block = &pidB,
         .pwm_motor = &pwmB
     };
 
@@ -163,6 +163,7 @@ void app_main(void)
 
     TaskHandle_t xRightEncoderTaskHandle, xLeftEncoderTaskHandle, xBackEncoderTaskHandle; ///< Task handles for encoders
     /*, xIMUTaskHandle = NULL, xLidarTaskHandle = NULL*/ ///< Task handles
+    ESP_LOGI("TASKS", "Right encoder handle: 0x%04X", gAs5600R.out); ///< Log the task handles
     xTaskCreate(vTaskEncoder, "right_encoder_task", 2048, &right_control_params, 9, &xRightEncoderTaskHandle); ///< Create the task to read from encoder
     xTaskCreate(vTaskEncoder, "left_encoder_task", 2048, &left_control_params, 9, &xLeftEncoderTaskHandle); ///< Create the task to read from encoder
     xTaskCreate(vTaskEncoder, "back_encoder_task", 2048, &back_control_params, 9, &xBackEncoderTaskHandle); ///< Create the task to read from encoder
@@ -197,24 +198,26 @@ void app_main(void)
     // }
 
     TaskHandle_t xRightControlTaskHandle, xLeftControlTaskHandle, xBackControlTaskHandle; ///< Task handles for control tasks
-    xTaskCreate(vTaskControl, "rwh_control_task", 4096, &right_control_params, 9, &xRightControlTaskHandle); ///< Create the task to control the wheel
-    xTaskCreate(vTaskControl, "lwh_control_task", 4096, &left_control_params,  9, &xLeftControlTaskHandle); ///< Create the task to control the wheel
-    xTaskCreate(vTaskControl, "bwh_control_task", 4096, &back_control_params,  9, &xBackControlTaskHandle); ///< Create the task to control the wheel
-    configASSERT(xRightControlTaskHandle); ///< Check if the task was created successfully
-    if (xRightControlTaskHandle == NULL) {
-        ESP_LOGE("CTRL_TASK", "Failed to create task...");
-        return;
-    }
-    configASSERT(xLeftControlTaskHandle); ///< Check if the task was created successfully
-    if (xLeftControlTaskHandle == NULL) {
-        ESP_LOGE("CTRL_TASK", "Failed to create task...");
-        return;
-    }
-    configASSERT(xBackControlTaskHandle); ///< Check if the task was created successfully
-    if (xBackControlTaskHandle == NULL) {
-        ESP_LOGE("CTRL_TASK", "Failed to create task...");
-        return;
-    }
-    ///<--------------------------------------------------
+    // xTaskCreate(vTaskControl, "rwh_control_task", 4096, &right_control_params, 9, &xRightControlTaskHandle); ///< Create the task to control the wheel
+    // xTaskCreate(vTaskControl, "lwh_control_task", 4096, &left_control_params,  9, &xLeftControlTaskHandle); ///< Create the task to control the wheel
+    // xTaskCreate(vTaskControl, "bwh_control_task", 4096, &back_control_params,  9, &xBackControlTaskHandle); ///< Create the task to control the wheel
+    // configASSERT(xRightControlTaskHandle); ///< Check if the task was created successfully
+    // if (xRightControlTaskHandle == NULL) {
+    //     ESP_LOGE("CTRL_TASK", "Failed to create task...");
+    //     return;
+    // }
+    // configASSERT(xLeftControlTaskHandle); ///< Check if the task was created successfully
+    // if (xLeftControlTaskHandle == NULL) {
+    //     ESP_LOGE("CTRL_TASK", "Failed to create task...");
+    //     return;
+    // }
+    // configASSERT(xBackControlTaskHandle); ///< Check if the task was created successfully
+    // if (xBackControlTaskHandle == NULL) {
+    //     ESP_LOGE("CTRL_TASK", "Failed to create task...");
+    //     return;
+    // }
+    ///<-------------------------------------------------
+    
+    
 
 }
