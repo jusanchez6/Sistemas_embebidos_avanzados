@@ -11,6 +11,12 @@ float predef_move[4][3] = { // {right, left, back} velocity in cm/s
     {0.0f, 0.0f, 0.0f} ///< Stop
 };
 
+float predef_move2[3][8] = { // {right, left, back} velocity in cm/s
+    {15.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -15.0f, 0.0f}, ///< Predefined movements for the robot
+    {-15.0f, 0.0f, 15.0f, 0.0f, -15.0f, 0.0f, 15.0f, 0.0f}, ///< Predefined movements for the robot
+    {0.0f, 0.0f, -15.0f, 0.0f, 15.0f, 0.0f, 0.0f, 0.0f} ///< Predefined movements for the robot
+};
+
 imu_data_t imu_data = {
     .velocity = 0.0f,         ///< Velocity in cm/s
     .prev_acc = 0.0f,         ///< Previous acceleration values
@@ -56,7 +62,7 @@ pid_parameter_t pid_paramR = {
     .kd = PID_KD,
     .max_output = 70.0f,
     .min_output = -70.0f,
-    .set_point = 20.0f,
+    .set_point = 0.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
 };
@@ -67,7 +73,7 @@ pid_parameter_t pid_paramL = {
     .kd = PID_KD,
     .max_output = 70.0f,
     .min_output = -70.0f,
-    .set_point = 20.0f,
+    .set_point = 0.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
 };
@@ -78,7 +84,7 @@ pid_parameter_t pid_paramB = {
     .kd = PID_KD,
     .max_output = 70.0f,
     .min_output = -70.0f,
-    .set_point = 20.0f,
+    .set_point = 0.0f,
     .cal_type = PID_CAL_TYPE_INCREMENTAL,
     .beta = 0.0f
 };
@@ -94,13 +100,13 @@ void vTaskEncoder(void * pvParameters) {
         encoder_data->angle = AS5600_ADC_GetAngle(params->gStruct); ///< Get the angle from the ADC
         estimate_velocity_encoder(encoder_data); ///< Estimate the velocity using encoder data
 
-        // Get current task handle
-        TaskHandle_t xTask = xTaskGetCurrentTaskHandle();
+        // // Get current task handle
+        // TaskHandle_t xTask = xTaskGetCurrentTaskHandle();
 
-        // Get task name
-        const char *task_name = pcTaskGetName(xTask);
+        // // Get task name
+        // const char *task_name = pcTaskGetName(xTask);
 
-        // Log every 100ms because of the ESP_LOGI overhead
+        // // Log every 100ms because of the ESP_LOGI overhead
         // static int counter = 0;
         // if (++counter >= 50) {  // 2ms × 50 = 100ms
         //     ESP_LOGI(task_name, "Angle: %.2f", encoder_data->angle);
@@ -144,7 +150,8 @@ void vTaskControl( void * pvParameters ){
     control_params_t *params = (control_params_t *)pvParameters; ///< Control parameters structure
     encoder_data_t *encoder_data = (encoder_data_t *)params->sensor_data; ///< Encoder data structure
 
-    uint32_t timestamp = 1000000; // 1 second
+    uint32_t timestamp = 1000000, counter = 0; // 1 second
+    uint8_t predef_move_index = 0; ///< Index for predefined movements
     float est_velocity = 0.0f, last_est_velocity = 0.0f;
     // float beta = exp(-2 * PI * 1 / 100);  // 10Hz cutoff frequency
     float output = 0.0f;
@@ -158,14 +165,23 @@ void vTaskControl( void * pvParameters ){
         // est_velocity = beta * last_est_velocity + (1 - beta) * est_velocity; ///< Apply low-pass filter to the estimated velocity when there is more than one sensor
         last_est_velocity = est_velocity; ///< Update the last estimated velocity
 
-        // Update PID Controller
-        pid_compute(*(params->pid_block), est_velocity, &output);
-
         // Get current task handle
         TaskHandle_t xTask = xTaskGetCurrentTaskHandle();
 
         // Get task name
         const char *task_name = pcTaskGetName(xTask);
+
+        if(counter >= 3000){ ///< If the counter is greater than or equal to 3 seconds
+            ESP_LOGI(task_name, "Predefined movement index: %d, Set point value: %.2f", predef_move_index, predef_move2[params->predef_move][predef_move_index]); ///< Log the predefined movement index
+            counter = 0; ///< Reset the counter
+            if(predef_move_index >= 7) { ///< If the index is greater than or equal to the size of the predefined movements
+                predef_move_index = 0; ///< Reset the index
+            }
+            predef_move_index = (predef_move_index + 1); ///< Increment the index for predefined movements
+            pid_update_set_point(*(params->pid_block), (float)predef_move2[params->predef_move][predef_move_index]); ///< Set the set point for the right wheel
+        } else {
+            counter += 2; ///< Increment the counter by 2 ms
+        }
 
         // Log every 100ms because of the ESP_LOGI overhead
         // static int counter = 0;
@@ -174,6 +190,8 @@ void vTaskControl( void * pvParameters ){
         //     counter = 0;
         // }   
 
+        // Update PID Controller
+        pid_compute(*(params->pid_block), est_velocity, &output);
         bldc_set_duty(params->pwm_motor, output); ///< Set the duty cycle to the output of the PID controller
         
         if(timestamp % 100000 == 0) { ///< Print every 100ms to debug with IMU software

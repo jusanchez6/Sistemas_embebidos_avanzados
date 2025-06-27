@@ -49,11 +49,11 @@
 #define PWM_GPIO_R 20               ///< GPIO number for right PWM signal
 #define PWM_REV_GPIO_R 21           ///< GPIO number for right PWM reverse signal
 
-#define PWM_GPIO_L 10               ///< GPIO number for left PWM signal
-#define PWM_REV_GPIO_L 11           ///< GPIO number for left PWM reverse signal
+#define PWM_GPIO_L 47               ///< GPIO number for left PWM signal
+#define PWM_REV_GPIO_L 48           ///< GPIO number for left PWM reverse signal
 
-#define PWM_GPIO_B 42               ///< GPIO number for back PWM signal
-#define PWM_REV_GPIO_B 41           ///< GPIO number for back PWM reverse signal
+#define PWM_GPIO_B 45               ///< GPIO number for back PWM signal
+#define PWM_REV_GPIO_B 0           ///< GPIO number for back PWM reverse signal
 
 #define PWM_FREQ 50                 ///< PWM frequency in Hz
 #define PWM_RESOLUTION 100000       ///< PWM resolution in bits
@@ -76,6 +76,8 @@ typedef struct {
     encoder_data_t * sensor_data;     ///< Velocity estimation from IMU in cm/s
     pid_block_handle_t * pid_block;   ///< Velocity estimation from Lidar in cm/s
     bldc_pwm_motor_t * pwm_motor; ///< BLDC motor object
+
+    uint8_t predef_move; ///< Predefined movements for the robot
 } control_params_t;
 
 /**

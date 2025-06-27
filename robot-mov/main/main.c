@@ -142,21 +142,24 @@ void app_main(void)
         .gStruct = &gAs5600R,
         .sensor_data = &right_encoder_data,
         .pid_block = &pidR,
-        .pwm_motor = &pwmR
+        .pwm_motor = &pwmR,
+        .predef_move = 0 ///< Predefined movements for the robot, can be set later
     };
 
     static control_params_t left_control_params = {
         .gStruct = &gAs5600L,
         .sensor_data = &left_encoder_data,
         .pid_block = &pidL,
-        .pwm_motor = &pwmL
+        .pwm_motor = &pwmL,
+        .predef_move = 1 ///< Predefined movements for the robot, can be set later
     };
 
     static control_params_t back_control_params = {
         .gStruct = &gAs5600B,
         .sensor_data = &back_encoder_data,
         .pid_block = &pidB,
-        .pwm_motor = &pwmB
+        .pwm_motor = &pwmB,
+        .predef_move = 2 ///< Predefined movements for the robot, can be set later
     };
 
     vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Wait for 1 second to ensure all peripherals are initialized
