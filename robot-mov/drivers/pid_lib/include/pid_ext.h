@@ -86,7 +86,7 @@ int pid_update_parameters(pid_block_handle_t pid, const pid_parameter_t *params)
  * @brief Update PID parameters
  *
  * @param[in] pid PID control block handle, created by `pid_new_control_block()`
- * @param[in] params PID parameters
+ * @param[in] set_point New set point value for PID control
  * @return
  *      - PID_OK: Update PID parameters successfully
  *      - PID_ERR_INVALID_ARG: Update PID parameters failed because of invalid argument

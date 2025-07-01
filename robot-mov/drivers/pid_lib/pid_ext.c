@@ -172,7 +172,7 @@ int pid_update_parameters(pid_block_handle_t pid, const pid_parameter_t *params)
 
 int pid_update_set_point(pid_block_handle_t pid, float set_point)
 {
-    if (!pid || !set_point) {
+    if (!pid) {
         return PID_ERR_INVALID_ARG; // Invalid argument
     }
     
