@@ -143,7 +143,8 @@ void app_main(void)
         .sensor_data = &right_encoder_data,
         .pid_block = &pidR,
         .pwm_motor = &pwmR,
-        .predef_move = 0 ///< Predefined movements for the robot, can be set later
+        .predef_move = 0, ///< Predefined movements for the robot, can be set later
+        .vel_selection = 0 ///< Velocity selection for the robot, can be set later
     };
 
     static control_params_t left_control_params = {
@@ -151,7 +152,8 @@ void app_main(void)
         .sensor_data = &left_encoder_data,
         .pid_block = &pidL,
         .pwm_motor = &pwmL,
-        .predef_move = 1 ///< Predefined movements for the robot, can be set later
+        .predef_move = 1, ///< Predefined movements for the robot, can be set later
+        .vel_selection = 1 ///< Velocity selection for the robot, can be set later
     };
 
     static control_params_t back_control_params = {
@@ -159,7 +161,8 @@ void app_main(void)
         .sensor_data = &back_encoder_data,
         .pid_block = &pidB,
         .pwm_motor = &pwmB,
-        .predef_move = 2 ///< Predefined movements for the robot, can be set later
+        .predef_move = 2, ///< Predefined movements for the robot, can be set later
+        .vel_selection = 2 ///< Velocity selection for the robot, can be set later
     };
 
     vTaskDelay(5000 / portTICK_PERIOD_MS); ///< Wait for 1 second to ensure all peripherals are initialized

@@ -1,15 +1,8 @@
 #include "control_main.h"
 
-float predef_move[4][3] = { // {right, left, back} velocity in cm/s
-    {15.0f, -15.0f, 0}, ///< Move forward
-    {0.0f, 0.0f, 0.0f}, ///< Stop
-    {0.0f, 15.0f, -15.0f}, ///< Move diagonally right-forward
-    {0.0f, 0.0f, 0.0f}, ///< Stop
-    {0.0f, -15.0f, 15.0f}, ///< Move diagonally left-forward
-    {0.0f, 0.0f, 0.0f}, ///< Stop
-    {-15.0f, 15.0f, 0}, ///< Move backward
-    {0.0f, 0.0f, 0.0f} ///< Stop
-};
+bool forward_mov[] = {true, true, true, false, false, false, false, true}; ///< Forward movements for the robot
+float linear_velocity[] = {15.0f, 0.0f, 15.0f, 0.0f, 15.0f, 0.0f, 15.0f, 0.0f}; ///< Linear velocities for the robot in cm/s
+float angle[] = {0.0f, 0.0f, 90.0f, 0.0f, 0.0f, 0.0f, 90.0f, 0.0f}; ///< Angles for the robot in degrees
 
 float predef_move2[3][8] = { // {right, left, back} velocity in cm/s
     {-15.0f, 0.0f, 15.0f, 0.0f, -15.0f, 0.0f, 15.0f, 0.0f}, ///< Predefined movements for the robots right wheel
@@ -176,14 +169,16 @@ void vTaskControl( void * pvParameters ){
 
         if (move && (counter % 3000 == 0)) { ///< Every 3 seconds
             int idx = counter / 3000;
-            float setpoint = 0.0f;
+            float setpoint = 0.0f, x_vel = 0.0f, y_vel = 0.0f; ///< Initialize setpoint and generalized velocities
             if (idx < 8) {
-                setpoint = predef_move2[params->predef_move][idx];
-            if (pid_update_set_point(pid_block, setpoint) != PID_OK) {
-                // ESP_LOGE(task_name, "Failed to update PID parameters for %s", task_name);
-            } else {
-                // ESP_LOGW(task_name, "Set point value changed to %.2f (idx %d)", setpoint, idx);
-            }
+                // Calculate the setpoint based on the predefined movements
+                linear_movement(forward_mov[idx], linear_velocity[idx], angle[idx], &x_vel, &y_vel); ///< Calculate the setpoint based on the predefined movements
+                cal_lin_to_ang_velocity(x_vel, y_vel, params->vel_selection, &setpoint); ///< Calculate the setpoint based on the predefined movements
+                if (pid_update_set_point(pid_block, setpoint / 1000.0) != PID_OK) {
+                    ESP_LOGE(task_name, "Failed to update PID parameters for %s", task_name);
+                } else {
+                    ESP_LOGW(task_name, "Set point value changed to %.2f", setpoint / 1000.0);
+                }
             } else {
                 // Stop moving after last setpoint
                 pid_update_set_point(pid_block, 0.0f);
@@ -203,7 +198,7 @@ void vTaskControl( void * pvParameters ){
         // Log every 100ms because of the ESP_LOGI overhead
         // static int ctr = 0;
         // if (++ctr >= 50) {  // 2ms × 50 = 100ms
-        //     // ESP_LOGI(task_name, "Input: %.2f\tOutput: %.2f", est_velocity, output); ///< Log the PID parameters
+        //     ESP_LOGI(task_name, "Input: %.2f\tOutput: %.2f", est_velocity, output); ///< Log the PID parameters
         //     ctr = 0;
         // }
         

@@ -13,6 +13,7 @@
 #include "bldc_pwm.h"
 #include "pid_ext.h"
 #include "sensor_fusion.h"
+#include "mov_calculation.h"
 
 // Include ESP IDF libraries
 #include <assert.h>
@@ -78,6 +79,7 @@ typedef struct {
     bldc_pwm_motor_t * pwm_motor; ///< BLDC motor object
 
     uint8_t predef_move; ///< Predefined movements for the robot
+    uint8_t vel_selection; ///< Velocity selection for the robot
 } control_params_t;
 
 /**
