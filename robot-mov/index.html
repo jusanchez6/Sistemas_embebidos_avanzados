@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control Robot WiFi</title>
+  <style>
+    body {
+      background: #1f1f1f; color: #fff; font-family: sans-serif; text-align: center; padding: 20px;
+    }
+    h1 { color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+    form {
+      background: #2b2b2b; padding: 15px; border-radius: 10px; margin: 20px auto; width: 90%; max-width: 400px;
+      box-shadow: 0 0 15px #00ffff;
+    }
+    input, select, button {
+      margin: 5px; padding: 10px; width: 90%; border-radius: 5px; border: none;
+    }
+    button {
+      background: linear-gradient(45deg, #00ffff, #ff00ff); color: white; font-weight: bold;
+      box-shadow: 0 0 10px #ff00ff; cursor: pointer;
+    }
+    button:hover {
+      box-shadow: 0 0 20px #ffffff, 0 0 40px #ff00ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>✨ Control Robot WiFi ✨</h1>
+
+  <!-- Movimiento en línea recta -->
+  <form action="/linea_recta" method="GET">
+    <h3>Movimiento Recto</h3>
+    <select name="direccion">
+      <option value="adelante">Adelante</option>
+      <option value="atras">Atrás</option>
+    </select>
+    <input type="number" name="angulo" placeholder="Ángulo (grados)" required>
+    <input type="number" name="velocidad" placeholder="Velocidad (cm/s)" required>
+    <input type="number" name="longitud" placeholder="Distancia (cm)" required>
+    <button type="submit">Enviar</button>
+  </form>
+
+  <!-- Rotación sobre eje -->
+  <form action="/rotar" method="GET">
+    <h3>Rotar sobre Eje</h3>
+    <select name="sentido">
+      <option value="cw">Horario (CW)</option>
+      <option value="ccw">Antihorario (CCW)</option>
+    </select>
+    <input type="number" name="grados" placeholder="Grados a rotar" required>
+    <input type="number" name="velocidad" placeholder="Velocidad de rotación (°/s)" required>
+    <button type="submit">Enviar</button>
+  </form>
+
+  <!-- Movimiento circular -->
+  <form action="/circular" method="GET">
+    <h3>Movimiento Circular (Bonus)</h3>
+    <select name="sentido">
+      <option value="cw">Horario (CW)</option>
+      <option value="ccw">Antihorario (CCW)</option>
+    </select>
+    <input type="number" name="radio" placeholder="Radio (cm)">
+    <input type="number" name="velocidad" placeholder="Velocidad (cm/s)">
+    <input type="number" name="grados" placeholder="Grados a girar">
+    <button type="submit">Enviar</button>
+  </form>
+</body>
+</html>

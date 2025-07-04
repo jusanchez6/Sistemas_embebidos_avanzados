@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ROBOT CONTROL</title>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+
+    form,
+    input,
+    select,
+    button {
+      margin: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    button {
+      background: #00f;
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>HTTP ROBOT CONTROL</h1>
+
+  <h2>ESP32 IP Configuration</h2>
+  <p>Set the IP address of your ESP32 device below:</p>
+  <input id="esp32_ip" type="text" placeholder="ESP32 IP" value="http://192.168.4.1">
+
+  <!-- Line Movement -->
+  <form id="lineMovement">
+    <h3>Line Movement</h3>
+    <select id="direction">
+      <option value="Forward">Forward</option>
+      <option value="Backward">Backward</option>
+    </select>
+    <input required id="degrees" type="number" placeholder="Degrees (°)">
+    <input required id="velocity" type="number" placeholder="Velocity (cm/s)">
+    <input required id="distance" type="number" placeholder="Distance (cm)">
+    <button type="submit">Send</button>
+  </form>
+
+  <!-- Circular Movement -->
+  <form id="circularMovement">
+    <h3>Circular Movement</h3>
+    <select id="orientation_c">
+      <option value="cw">Clock Wise</option>
+      <option value="ccw">Counter Clock Wise</option>
+    </select>
+    <input required id="degrees_c" type="number" placeholder="Degrees (°)">
+    <input required id="velocity_c" type="number" placeholder="Velocity (cm/s)">
+    <input required id="radius_c" type="number" placeholder="Radius (cm)">
+    <button type="submit">Send</button>
+  </form>
+
+  <!-- Self Rotation -->
+  <form id="selfRotation">
+    <h3>Self Rotation</h3>
+    <select id="orientation_r">
+      <option value="cw">Clock Wise</option>
+      <option value="ccw">Counter Clock Wise</option>
+    </select>
+    <input required id="degrees_r" type="number" placeholder="Degrees to rotate (°)">
+    <input required id="velocity_r" type="number" placeholder="Velocity of rotation (°/s)">
+    <button type="submit">Send</button>
+  </form>
+
+  <script>
+    const ESP32_IP = document.getElementById("esp32_ip"); // ✅ CORREGIDO
+
+    function sendCommand(endpoint, data) {
+      const params = new URLSearchParams(data);
+
+      fetch(`${ESP32_IP.value}/${endpoint}?${params}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("ESP32 respondió con error: " + response.status);
+          }
+          return response.text();
+        })
+        .then(text => {
+          alert("Respuesta ESP32: " + text);
+        })
+        .catch(error => {
+          console.error(error);
+          alert("Error - No connection with ESP32");
+        });
+    }
+
+    // Handler: Line Movement
+    document.getElementById("lineMovement").onsubmit = function (e) {
+      e.preventDefault();
+      sendCommand("lineMovement", {
+        direction: document.getElementById("direction").value,
+        degrees: document.getElementById("degrees").value,
+        velocity: document.getElementById("velocity").value,
+        distance: document.getElementById("distance").value
+      });
+    };
+
+    // Handler: Circular Movement
+    document.getElementById("circularMovement").onsubmit = function (e) {
+      e.preventDefault();
+      sendCommand("circularMovement", {
+        direction: document.getElementById("orientation_c").value,
+        degrees: document.getElementById("degrees_c").value,
+        velocity: document.getElementById("velocity_c").value,
+        distance: document.getElementById("radius_c").value // usando "distance" como en el backend
+      });
+    };
+
+    // Handler: Self Rotation
+    document.getElementById("selfRotation").onsubmit = function (e) {
+      e.preventDefault();
+      sendCommand("selfRotation", {
+        direction: document.getElementById("orientation_r").value,
+        degrees: document.getElementById("degrees_r").value,
+        velocity: document.getElementById("velocity_r").value
+      });
+    };
+  </script>
+</body>
+
+</html>
