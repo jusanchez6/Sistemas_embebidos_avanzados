@@ -59,14 +59,18 @@ void app_main(void)
     
 
     ///<---------------- Initialize the Wifi ----------------
-    if (wifi_init_station() != ESP_OK){
-        ESP_LOGE("WIFI_INIT", "Could not initialize WiFi station mode...");
-    
-    } else {    
-        ESP_LOGI("WIFI_INIT", "WiFi station mode initialized successfully...");
-        get_ip_address(); ///< Get the IP address of the ESP32
 
-    }
+
+    // Nelson aqui deberias llamar primero wifi_init_station() y luego start_server()
+ 
+    // en los handlers que puse en wifi_lib.c deberias implementar la logica de movimiento del robot con las estructuras o lo que se te haya ocurrido
+    // recuerde cambiar la clabve de wifi y el nombre de la red wifi en wifi_lib.h, cualquier cosa me avisa para ayudarle, no compile el proyecto porque a mi me tira errores
+    // muy raros, supongo que a vos que te compila este archivo sin problema no te pondrá problemas, igual me avisa si pasa algo, lo que agregué esta probado en entorno cerrado,
+    // no sé si al agregarlo aqui haya roto algo, ojalá no.
+
+    
+
+
     ///<----------------------------------------------------
     
     
