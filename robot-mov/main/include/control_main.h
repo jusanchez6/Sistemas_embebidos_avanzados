@@ -13,6 +13,7 @@
 #include "bldc_pwm.h"
 #include "pid_ext.h"
 #include "sensor_fusion.h"
+#include "wifi_lib.h"
 
 // Include ESP IDF libraries
 #include <assert.h>
@@ -106,5 +107,13 @@ void vTaskControl( void * pvParameters );
  * @param pvParameters 
  */
 void vTaskUART(void * pvParameters);
+
+/**
+ * @brief udp server task to handle incoming requests
+ */
+void vTaskUDPServer(void * pvParameters);
+
+
+
 
 #endif // CONTROL_H

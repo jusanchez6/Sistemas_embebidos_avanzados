@@ -59,17 +59,11 @@ void app_main(void)
     
 
     ///<---------------- Initialize the Wifi ----------------
-
-
-    // Nelson aqui deberias llamar primero wifi_init_station() y luego start_server()
- 
-    // en los handlers que puse en wifi_lib.c deberias implementar la logica de movimiento del robot con las estructuras o lo que se te haya ocurrido
-    // recuerde cambiar la clabve de wifi y el nombre de la red wifi en wifi_lib.h, cualquier cosa me avisa para ayudarle, no compile el proyecto porque a mi me tira errores
-    // muy raros, supongo que a vos que te compila este archivo sin problema no te pondrá problemas, igual me avisa si pasa algo, lo que agregué esta probado en entorno cerrado,
-    // no sé si al agregarlo aqui haya roto algo, ojalá no.
-
-    
-
+    if (dev_wifi_init() != ESP_OK) {
+        ESP_LOGE(TAG_WIFI, "Failed to initialize Wi-Fi");
+        return;
+    }
+    ESP_LOGI(TAG_WIFI, "Wi-Fi initialized successfully");
 
     ///<----------------------------------------------------
     
@@ -189,6 +183,7 @@ void app_main(void)
     xTaskCreatePinnedToCore(vTaskControl, "lwh_control_task", 4096, &left_control_params, 9, &xLeftControlTaskHandle, 1);   ///< Create the task to control the left wheel
     xTaskCreatePinnedToCore(vTaskControl, "bwh_control_task", 4096, &back_control_params, 9, &xBackControlTaskHandle, 1);   ///< Create the task to control the back wheel
 
+
     configASSERT(xRightControlTaskHandle); ///< Check if the task was created successfully
     if (xRightControlTaskHandle == NULL) {
         ESP_LOGE("CTRL_TASK", "Failed to create task...");
@@ -241,6 +236,11 @@ void app_main(void)
     // }
 
     
+
+    /// <------------------------------------------------
+    xTaskCreatePinnedToCore(vTaskUDPServer, "UDPServer", 2048, NULL, 8, NULL, 1); ///< Create the task for UDP server
+    ESP_LOGI("TASKS", "UDP Server task created successfully");
+
     ///<-------------------------------------------------
     
     

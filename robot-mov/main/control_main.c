@@ -187,3 +187,71 @@ void vTaskControl( void * pvParameters ){
     }
 }
 
+void vTaskUDPServer(void *pvParameters)
+{
+    char rx_buffer[128];
+    struct sockaddr_in server_addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(PORT),
+        .sin_addr.s_addr = htonl(INADDR_ANY)};
+
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    if (sock < 0)
+    {
+        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+        vTaskDelete(NULL);
+        return;
+    }
+
+    if (bind(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+        close(sock);
+        vTaskDelete(NULL);
+        return;
+    }
+
+    ESP_LOGI(TAG, "UDP server listening on port %d", PORT);
+
+    while (1)
+    {
+        struct sockaddr_in source_addr;
+        socklen_t socklen = sizeof(source_addr);
+        int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0,
+                           (struct sockaddr *)&source_addr, &socklen);
+
+        if (len < 0)
+        {
+            ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
+            continue;
+        }
+
+        rx_buffer[len] = 0;
+        ESP_LOGI(TAG, "Received: %s", rx_buffer);
+
+        if (strncmp(rx_buffer, "L ", 2) == 0)
+        {
+            char direction[16];
+            float degrees, velocity, distance;
+            sscanf(rx_buffer + 2, "%s %f %f %f", direction, &degrees, &velocity, &distance);
+            // lógica de movimiento lineal
+        }
+        else if (strncmp(rx_buffer, "C ", 2) == 0)
+        {
+            char direction[16];
+            float degrees, velocity, radius;
+            sscanf(rx_buffer + 2, "%s %f %f %f", direction, &degrees, &velocity, &radius);
+            // lógica de movimiento circular
+        }
+        else if (strncmp(rx_buffer, "R ", 2) == 0)
+        {
+            char direction[16];
+            float degrees, velocity;
+            sscanf(rx_buffer + 2, "%s %f %f", direction, &degrees, &velocity);
+            // lógica de rotación sobre sí mismo
+        }
+    }
+
+    close(sock);
+
+}

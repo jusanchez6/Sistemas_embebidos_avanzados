@@ -118,6 +118,66 @@ Each wheel is controlled through a PID feedback loop based on encoder readings. 
 
 ---
 
+
+## 🛰️ UDP Server with Python Proxy (Flask)
+
+### Why use a Python proxy?
+
+The ESP32 is set up to receive movement commands over **UDP**, but sending UDP messages directly from a browser (HTML + JavaScript) is **not supported** due to security restrictions in modern web browsers.
+
+To solve this, it uses a small **Python HTTP-to-UDP proxy** built with **Flask**. The browser sends an HTTP GET request to this proxy, which then sends the actual UDP message to the ESP32.
+
+---
+
+### How it works
+
+```
+[ Browser (HTML page) ] ---> [ Python Flask Proxy (HTTP) ] ---> [ ESP32 UDP Server ]
+```
+
+---
+
+### Setting up the Proxy
+
+#### 1. Install dependencies
+
+Make sure you have **Python 3.7+** installed, and  using a virtual environment:
+
+```bash
+python3 -m venv myenv
+source myenv/bin/activate
+pip install flask
+```
+
+---
+
+
+### 2. Running the Proxy
+
+```bash
+python3 proxy_udp.py
+```
+
+You should see output like:
+
+```
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.X:5000
+```
+
+Keep this terminal open. It will log all requests and show if messages are being sent to the ESP32.
+
+---
+
+### Sending Commands
+
+Use the index.html inlcude in this repository to use send comands to the ESP32s3
+
+> It's possible to see an error sending the commands, this is a harmless error and the html script should be work fine
+
+---
+
+
 ## 📦 Dependencies
 
 - **ESP-IDF**
