@@ -127,7 +127,7 @@ The ESP32 is set up to receive movement commands over **UDP**, but sending UDP m
 
 To solve this, it uses a small **Python HTTP-to-UDP proxy** built with **Flask**. The browser sends an HTTP GET request to this proxy, which then sends the actual UDP message to the ESP32.
 
----
+
 
 ### How it works
 
@@ -135,7 +135,7 @@ To solve this, it uses a small **Python HTTP-to-UDP proxy** built with **Flask**
 [ Browser (HTML page) ] ---> [ Python Flask Proxy (HTTP) ] ---> [ ESP32 UDP Server ]
 ```
 
----
+
 
 ### Setting up the Proxy
 
@@ -149,7 +149,7 @@ source myenv/bin/activate
 pip install flask
 ```
 
----
+
 
 
 ### 2. Running the Proxy
@@ -167,7 +167,7 @@ You should see output like:
 
 Keep this terminal open. It will log all requests and show if messages are being sent to the ESP32.
 
----
+
 
 ### Sending Commands
 
