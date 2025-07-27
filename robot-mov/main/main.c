@@ -65,6 +65,8 @@ void app_main(void)
     }
     ESP_LOGI(TAG_WIFI, "Wi-Fi initialized successfully");
 
+    get_ip_address(); ///< Get the IP address of the device
+
     ///<----------------------------------------------------
     
     

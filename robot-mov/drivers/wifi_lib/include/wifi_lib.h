@@ -48,6 +48,7 @@
 
 esp_err_t dev_wifi_init(void);
 
+void get_ip_address(void);
 
 
 #endif // _WIFI_LIB_H_
